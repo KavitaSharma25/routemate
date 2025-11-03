@@ -1,0 +1,177 @@
+import React, { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
+import Notifications from './Notifications'
+import Button from './ui/Button'
+import { Dropdown, DropdownItem, DropdownDivider } from './ui/Dropdown'
+import Badge from './ui/Badge'
+
+export default function Navbar(){
+  const { user, token, logout } = useAuth() || {}
+  const nav = useNavigate()
+  const handleLogout = () => {
+    logout && logout()
+    nav('/login')
+  }
+
+  const [theme, setTheme] = useState(localStorage.getItem('rm_theme') || 'light')
+  useEffect(()=>{
+    document.documentElement.classList.toggle('dark', theme === 'dark')
+    localStorage.setItem('rm_theme', theme)
+  },[theme])
+
+  return (
+    <nav className="sticky top-0 z-40 nav-bg border-b shadow-sm" style={{ borderColor: 'var(--border-color)' }}>
+      <div className="max-w-7xl mx-auto px-4 py-3">
+        <div className="flex items-center justify-between">
+          {/* Logo */}
+          <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <img 
+              src="/src/assets/logo.png" 
+              alt="RouteMate Logo" 
+              className="h-12 w-auto object-contain hover-scale"
+            />
+            <span className="font-bold text-xl text-[#584738] hidden sm:inline">RouteMate</span>
+          </Link>
+          
+          {/* Navigation Links */}
+          <div className="hidden md:flex items-center gap-2">
+            <Link to="/search">
+              <Button variant="ghost" size="sm">
+                🔍 Find Rides
+              </Button>
+            </Link>
+            <Link to="/provide">
+              <Button variant="primary" size="sm">
+                🚗 Provide Ride
+              </Button>
+            </Link>
+            {token && (
+              <Link to="/my-rides">
+                <Button variant="outline" size="sm">
+                  📋 My Rides
+                </Button>
+              </Link>
+            )}
+            <Link to="/history">
+              <Button variant="ghost" size="sm">
+                📜 History
+              </Button>
+            </Link>
+            <Link to="/chat">
+              <Button variant="ghost" size="sm">
+                💬 Chat
+              </Button>
+            </Link>
+            {user?.isAdmin && (
+              <Link to="/admin">
+                <Badge variant="primary">Admin Panel</Badge>
+              </Link>
+            )}
+          </div>
+          
+          {/* User Menu */}
+          <div className="flex items-center gap-3">
+            <Notifications />
+            
+            {token ? (
+              <Dropdown
+                trigger={
+                  <Button variant="outline" size="sm">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <span className="hidden sm:inline">{user?.name || 'Account'}</span>
+                  </Button>
+                }
+                align="right"
+              >
+                <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--border-color)' }}>
+                  <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                    {user?.name || 'User'}
+                  </p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    {user?.email}
+                  </p>
+                </div>
+                
+                <DropdownItem 
+                  onClick={() => nav('/profile')}
+                  icon={
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  }
+                >
+                  Profile
+                </DropdownItem>
+                
+                <DropdownItem 
+                  onClick={() => nav('/my-rides')}
+                  icon={
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                  }
+                >
+                  My Rides
+                </DropdownItem>
+                
+                <DropdownItem 
+                  onClick={() => nav('/history')}
+                  icon={
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  }
+                >
+                  History
+                </DropdownItem>
+                
+                <DropdownDivider />
+                
+                <DropdownItem 
+                  onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                  icon={theme === 'dark' ? '☀️' : '🌙'}
+                >
+                  {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+                </DropdownItem>
+                
+                <DropdownDivider />
+                
+                <DropdownItem 
+                  onClick={handleLogout}
+                  danger
+                  icon={
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                  }
+                >
+                  Logout
+                </DropdownItem>
+              </Dropdown>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link to="/login">
+                  <Button variant="ghost" size="sm">Login</Button>
+                </Link>
+                <Link to="/register">
+                  <Button variant="primary" size="sm">Register</Button>
+                </Link>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                  ariaLabel={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+                >
+                  {theme === 'dark' ? '☀️' : '🌙'}
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </nav>
+  )
+}

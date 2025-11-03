@@ -1,0 +1,152 @@
+/* ==========================================
+   LOGO STYLING - Optimized for Web
+   Supports PNG, SVG, and different sizes
+   ========================================== */
+
+/* Base logo styles */
+.logo {
+  display: block;
+  object-fit: contain;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* Prevent logo from being dragged */
+.logo {
+  -webkit-user-drag: none;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Logo sizes for different contexts */
+
+/* Navbar/Header logo - 250x80px recommended */
+.logo-header {
+  height: 40px;
+  width: auto;
+  max-width: 200px;
+}
+
+@media (min-width: 768px) {
+  .logo-header {
+    height: 48px;
+    max-width: 250px;
+  }
+}
+
+/* Large logo for home/hero sections */
+.logo-hero {
+  height: 96px;
+  width: auto;
+  max-width: 300px;
+}
+
+@media (min-width: 768px) {
+  .logo-hero {
+    height: 160px;
+    max-width: 400px;
+  }
+}
+
+/* Loading screen logo */
+.logo-loading {
+  width: 150px;
+  height: 150px;
+  object-fit: contain;
+}
+
+@media (min-width: 768px) {
+  .logo-loading {
+    width: 200px;
+    height: 200px;
+  }
+}
+
+/* Small logo for footer or compact areas */
+.logo-small {
+  height: 32px;
+  width: auto;
+  max-width: 120px;
+}
+
+/* Favicon size (for img tags if needed) */
+.logo-favicon {
+  width: 32px;
+  height: 32px;
+}
+
+/* Logo with transparent background support */
+.logo-transparent {
+  background: transparent;
+  mix-blend-mode: multiply; /* Helps with white backgrounds */
+}
+
+/* Logo hover effect for clickable logos */
+.logo-clickable {
+  pointer-events: auto;
+  cursor: pointer;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.logo-clickable:hover {
+  transform: scale(1.05);
+  opacity: 0.9;
+}
+
+.logo-clickable:active {
+  transform: scale(0.98);
+}
+
+/* SVG-specific styles */
+.logo-svg {
+  fill: currentColor; /* Allows color changes via CSS */
+  width: auto;
+  height: 100%;
+}
+
+/* High-DPI (Retina) display optimization */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .logo {
+    image-rendering: -webkit-optimize-contrast;
+  }
+}
+
+/* Dark mode logo variant */
+.dark .logo-dark-invert {
+  filter: invert(1) brightness(1.2);
+}
+
+/* Loading states */
+.logo-loading-state {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: logoShimmer 1.5s infinite;
+  border-radius: 8px;
+}
+
+@keyframes logoShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Lazy loading blur-up effect */
+.logo-blur-load {
+  filter: blur(10px);
+  transition: filter 0.3s ease;
+}
+
+.logo-blur-load.loaded {
+  filter: blur(0);
+}
+
+/* Print styles - ensure logo looks good when printed */
+@media print {
+  .logo {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

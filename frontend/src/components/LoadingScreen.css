@@ -1,0 +1,300 @@
+/* ==========================================
+   LOADING SCREEN ANIMATIONS
+   Optimized for performance and accessibility
+   ========================================== */
+
+.loading-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, var(--sand), var(--vanilla));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  opacity: 1;
+  transition: opacity 1s ease-in-out;
+  overflow: hidden;
+}
+
+.loading-screen.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loading-content {
+  text-align: center;
+  position: relative;
+  z-index: 2;
+  padding: 2rem;
+}
+
+/* Logo animations */
+.logo-container {
+  animation: scaleUpFadeIn 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  margin-bottom: 2rem;
+}
+
+.logo-container .logo-loading {
+  filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.2));
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Title animations - staggered letter entrance */
+.loading-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--mahogany);
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: center;
+  gap: 0.1em;
+}
+
+@media (min-width: 768px) {
+  .loading-title {
+    font-size: 3.5rem;
+  }
+}
+
+.loading-title .letter {
+  display: inline-block;
+  opacity: 0;
+  animation: letterSlideIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.loading-title .letter:nth-child(1) { animation-delay: 0.3s; }
+.loading-title .letter:nth-child(2) { animation-delay: 0.4s; }
+.loading-title .letter:nth-child(3) { animation-delay: 0.5s; }
+.loading-title .letter:nth-child(4) { animation-delay: 0.6s; }
+.loading-title .letter:nth-child(5) { animation-delay: 0.7s; }
+.loading-title .letter:nth-child(6) { animation-delay: 0.8s; }
+.loading-title .letter:nth-child(7) { animation-delay: 0.9s; }
+.loading-title .letter:nth-child(8) { animation-delay: 1s; }
+.loading-title .letter:nth-child(9) { animation-delay: 1.1s; }
+
+/* Tagline */
+.loading-tagline {
+  font-size: 1rem;
+  color: var(--tobacco);
+  opacity: 0;
+  animation: fadeInUp 0.8s ease-out 1.3s forwards;
+  margin-bottom: 2rem;
+}
+
+@media (min-width: 768px) {
+  .loading-tagline {
+    font-size: 1.25rem;
+  }
+}
+
+/* Progress bar */
+.progress-container {
+  width: 200px;
+  height: 4px;
+  background-color: rgba(88, 71, 56, 0.2);
+  border-radius: 2px;
+  margin: 2rem auto 1.5rem;
+  overflow: hidden;
+  opacity: 0;
+  animation: fadeIn 0.5s ease-out 1.5s forwards;
+}
+
+@media (min-width: 768px) {
+  .progress-container {
+    width: 300px;
+    height: 6px;
+  }
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--tobacco), var(--mahogany));
+  border-radius: 2px;
+  transition: width 0.3s ease-out;
+  box-shadow: 0 0 10px var(--mahogany);
+}
+
+/* Loading percentage (hidden visually, accessible to screen readers) */
+.loading-percentage {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--tobacco);
+  font-weight: 500;
+}
+
+/* Loading dots */
+.loading-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  opacity: 0;
+  animation: fadeIn 0.5s ease-out 1.7s forwards;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  background-color: var(--mahogany);
+  border-radius: 50%;
+  animation: dotBounce 1.4s infinite ease-in-out;
+}
+
+.dot:nth-child(1) { animation-delay: 0s; }
+.dot:nth-child(2) { animation-delay: 0.2s; }
+.dot:nth-child(3) { animation-delay: 0.4s; }
+
+/* Background decorations */
+.bg-decoration {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.1;
+  z-index: 1;
+}
+
+.decoration-1 {
+  width: 300px;
+  height: 300px;
+  background: var(--mahogany);
+  top: -100px;
+  right: -100px;
+  animation: float 8s ease-in-out infinite;
+}
+
+.decoration-2 {
+  width: 200px;
+  height: 200px;
+  background: var(--tobacco);
+  bottom: -50px;
+  left: -50px;
+  animation: float 6s ease-in-out infinite reverse;
+}
+
+.decoration-3 {
+  width: 150px;
+  height: 150px;
+  background: var(--mahogany);
+  top: 50%;
+  left: 10%;
+  animation: float 7s ease-in-out infinite;
+  animation-delay: 1s;
+}
+
+@media (min-width: 768px) {
+  .decoration-1 { width: 500px; height: 500px; top: -200px; right: -200px; }
+  .decoration-2 { width: 400px; height: 400px; bottom: -150px; left: -150px; }
+  .decoration-3 { width: 300px; height: 300px; }
+}
+
+/* ==========================================
+   KEYFRAME ANIMATIONS
+   ========================================== */
+
+@keyframes scaleUpFadeIn {
+  0% {
+    transform: scale(0.5) rotate(-10deg);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes letterSlideIn {
+  0% {
+    transform: translateY(-50px) rotate(-5deg);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInUp {
+  0% {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes dotBounce {
+  0%, 80%, 100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-20px) rotate(5deg);
+  }
+}
+
+/* Accessibility: Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .loading-screen,
+  .loading-screen * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .loading-logo {
+    animation: none;
+  }
+  
+  .loading-title .letter {
+    opacity: 1;
+    animation: none;
+  }
+  
+  .loading-tagline,
+  .progress-container,
+  .loading-dots {
+    opacity: 1;
+    animation: none;
+  }
+  
+  .bg-decoration {
+    animation: none;
+  }
+}
+
+/* Optimize rendering performance */
+.loading-screen,
+.loading-logo,
+.loading-title .letter,
+.progress-bar,
+.dot,
+.bg-decoration {
+  will-change: transform, opacity;
+}
+
+/* Cleanup will-change after animations complete */
+.loading-screen.fade-out * {
+  will-change: auto;
+}

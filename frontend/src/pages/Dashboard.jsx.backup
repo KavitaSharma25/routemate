@@ -1,0 +1,279 @@
+import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import RideCard from '../components/RideCard'
+import BookingWizard from '../components/BookingWizard'
+import './Dashboard.css'
+
+const Dashboard = () => {
+  const [upcomingRides, setUpcomingRides] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [selectedRide, setSelectedRide] = useState(null)
+  const [showWizard, setShowWizard] = useState(false)
+  const [stats, setStats] = useState({
+    totalRides: 0,
+    totalSaved: 0,
+    co2Reduced: 0
+  })
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    fetchDashboardData()
+  }, [])
+
+  const fetchDashboardData = async () => {
+    setLoading(true)
+    try {
+      // Fetch upcoming rides
+      const response = await fetch('http://localhost:5000/api/rides/search?status=active', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setUpcomingRides(data.slice(0, 6)) // Show first 6 rides
+        
+        // Calculate stats (mock for now)
+        setStats({
+          totalRides: Math.floor(Math.random() * 50) + 10,
+          totalSaved: Math.floor(Math.random() * 5000) + 1000,
+          co2Reduced: Math.floor(Math.random() * 100) + 20
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleBookRide = (ride) => {
+    setSelectedRide(ride)
+    setShowWizard(true)
+  }
+
+  const handleBookingComplete = async (bookingData) => {
+    console.log('Booking data:', bookingData)
+    // Here you would make API call to create booking
+    setShowWizard(false)
+    setSelectedRide(null)
+    // Show success notification
+    alert('Booking confirmed! Check your email for details.')
+  }
+
+  const handleCancelBooking = () => {
+    setShowWizard(false)
+    setSelectedRide(null)
+  }
+
+  return (
+    <div className="dashboard-container">
+      {/* Header */}
+      <div className="dashboard-header">
+        <div>
+          <h1 className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
+            Dashboard
+          </h1>
+          <p className="text-muted mt-2">Welcome back! Here's your carpool overview.</p>
+        </div>
+        <button 
+          onClick={() => navigate('/search')}
+          className="btn btn-primary"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="2"/>
+            <path d="m21 21-4.35-4.35" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+          Find Rides
+        </button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-icon" style={{ backgroundColor: 'var(--brown-100)' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ color: 'var(--brown-600)' }}>
+              <path d="M5 17h14v-5h2l-3-4-3 4h1v5H8v-5h1l-3-4-3 4h2v5z" fill="currentColor"/>
+            </svg>
+          </div>
+          <div className="stat-content">
+            <div className="stat-value">{stats.totalRides}</div>
+            <div className="stat-label">Total Rides</div>
+          </div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-icon" style={{ backgroundColor: 'var(--success-light, #d4edda)' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ color: 'var(--success)' }}>
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </div>
+          <div className="stat-content">
+            <div className="stat-value">₹{stats.totalSaved.toLocaleString()}</div>
+            <div className="stat-label">Money Saved</div>
+          </div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-icon" style={{ backgroundColor: '#d4edda' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ color: '#28a745' }}>
+              <path d="M12 2a10 10 0 100 20 10 10 0 000-20z" stroke="currentColor" strokeWidth="2"/>
+              <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </div>
+          <div className="stat-content">
+            <div className="stat-value">{stats.co2Reduced} kg</div>
+            <div className="stat-label">CO₂ Reduced</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="dashboard-grid">
+        {/* Upcoming Rides Section */}
+        <div className="dashboard-section">
+          <div className="section-header">
+            <h2 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+              Upcoming Rides
+            </h2>
+            <button 
+              onClick={() => navigate('/search')}
+              className="btn btn-ghost btn-sm"
+            >
+              View All
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            </button>
+          </div>
+
+          {loading ? (
+            <div className="rides-loading">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="skeleton-card">
+                  <div className="skeleton-header"></div>
+                  <div className="skeleton-body">
+                    <div className="skeleton-line"></div>
+                    <div className="skeleton-line short"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : upcomingRides.length > 0 ? (
+            <div className="rides-grid">
+              {upcomingRides.map(ride => (
+                <RideCard
+                  key={ride._id}
+                  ride={ride}
+                  onBook={handleBookRide}
+                  showBookingButton={true}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state">
+              <div className="empty-icon">🚗</div>
+              <h3 className="empty-title">No upcoming rides</h3>
+              <p className="empty-desc">Start by searching for available rides</p>
+              <button 
+                onClick={() => navigate('/search')}
+                className="btn btn-primary mt-4"
+              >
+                Search Rides
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Map Preview Section */}
+        <div className="dashboard-section map-section">
+          <div className="section-header">
+            <h2 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+              Popular Routes
+            </h2>
+          </div>
+          
+          <div className="map-preview">
+            <div className="map-placeholder">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" style={{ color: 'var(--brown-400)' }}>
+                <path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M8 2v16M16 6v16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <p className="mt-4" style={{ color: 'var(--text-muted)' }}>Map Preview</p>
+            </div>
+          </div>
+
+          {/* Quick Routes */}
+          <div className="quick-routes">
+            <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
+              Quick Routes
+            </h3>
+            <div className="routes-list">
+              {[
+                { from: 'Downtown', to: 'Airport', rides: 12 },
+                { from: 'Tech Park', to: 'Mall Road', rides: 8 },
+                { from: 'University', to: 'Downtown', rides: 15 }
+              ].map((route, i) => (
+                <button
+                  key={i}
+                  className="route-item"
+                  onClick={() => navigate(`/search?from=${route.from}&to=${route.to}`)}
+                >
+                  <div className="route-info">
+                    <div className="route-path">
+                      <span className="route-point">📍 {route.from}</span>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: 'var(--text-muted)' }}>
+                        <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                      </svg>
+                      <span className="route-point">🎯 {route.to}</span>
+                    </div>
+                    <span className="route-count">{route.rides} rides</span>
+                  </div>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ color: 'var(--text-muted)' }}>
+                    <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  </svg>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Recent Activity */}
+      <div className="dashboard-section">
+        <div className="section-header">
+          <h2 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+            Recent Activity
+          </h2>
+        </div>
+        <div className="activity-list">
+          {[
+            { type: 'booking', text: 'Booked ride to Airport', time: '2 hours ago', icon: '✓' },
+            { type: 'review', text: 'Received 5-star review', time: '1 day ago', icon: '⭐' },
+            { type: 'ride', text: 'Completed ride to Downtown', time: '2 days ago', icon: '🚗' }
+          ].map((activity, i) => (
+            <div key={i} className="activity-item">
+              <div className="activity-icon">{activity.icon}</div>
+              <div className="activity-content">
+                <div className="activity-text">{activity.text}</div>
+                <div className="activity-time">{activity.time}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Booking Wizard Modal */}
+      {showWizard && selectedRide && (
+        <BookingWizard
+          ride={selectedRide}
+          onComplete={handleBookingComplete}
+          onCancel={handleCancelBooking}
+        />
+      )}
+    </div>
+  )
+}
+
+export default Dashboard

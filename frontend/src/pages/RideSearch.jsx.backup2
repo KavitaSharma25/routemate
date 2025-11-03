@@ -1,0 +1,319 @@
+import React, { useEffect, useState } from 'react'
+import axios from 'axios'
+import RideCard from '../components/RideCard'
+import { useAuth } from '../context/AuthContext'
+import RazorpayCheckout from '../components/RazorpayCheckout'
+import { useNavigate } from 'react-router-dom'
+
+export default function RideSearch(){
+  const [rides,setRides]=useState([])
+  const [filteredRides, setFilteredRides] = useState([])
+  const [loading,setLoading]=useState(false)
+  const [filters, setFilters] = useState({
+    from: '',
+    to: '',
+    date: '',
+    maxPrice: '',
+    minSeats: ''
+  })
+  const auth = useAuth()
+
+  const fetch = async () => {
+    setLoading(true)
+    try{
+      const token = auth?.token || localStorage.getItem('token')
+      const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/rides/search`,{ headers: { Authorization: `Bearer ${token}` } })
+      setRides(res.data)
+      setFilteredRides(res.data)
+    }catch(err){
+      console.error(err)
+    }finally{setLoading(false)}
+  }
+
+  // Filter rides based on search criteria
+  useEffect(() => {
+    let filtered = rides.filter(ride => {
+      const matchesFrom = !filters.from || ride.from.toLowerCase().includes(filters.from.toLowerCase())
+      const matchesTo = !filters.to || ride.to.toLowerCase().includes(filters.to.toLowerCase())
+      const matchesDate = !filters.date || new Date(ride.date).toDateString() === new Date(filters.date).toDateString()
+      const matchesPrice = !filters.maxPrice || ride.price <= parseInt(filters.maxPrice)
+      const matchesSeats = !filters.minSeats || ride.seatsAvailable >= parseInt(filters.minSeats)
+      
+      return matchesFrom && matchesTo && matchesDate && matchesPrice && matchesSeats
+    })
+    setFilteredRides(filtered)
+  }, [rides, filters])
+
+  const updateFilter = (key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }))
+  }
+
+  const clearFilters = () => {
+    setFilters({
+      from: '',
+      to: '',
+      date: '',
+      maxPrice: '',
+      minSeats: ''
+    })
+  }
+
+  const nav = useNavigate()
+  useEffect(()=>{fetch()},[])
+
+  // state for in-page payment when backend returns order
+  const [pendingPayment, setPendingPayment] = useState(null)
+
+  const onBook = async (ride) => {
+    const token = auth?.token || localStorage.getItem('token')
+    if (!token) return nav('/login')
+    try{
+      const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/rides/${ride._id}/book`,{}, { headers: { Authorization: `Bearer ${token}` } })
+      // if backend responds with order and keyId, open checkout
+      if (res.data.order && res.data.keyId) {
+        setPendingPayment({ order: res.data.order, keyId: res.data.keyId, ride, bookingId: res.data.bookingId })
+        return
+      }
+      alert(res.data.message || 'Booking created')
+    }catch(err){
+      alert(err.response?.data?.message || 'Booking failed')
+    }
+  }
+
+  const onPaymentSuccess = async (razorResp) => {
+    try{
+      const token = auth?.token || localStorage.getItem('token')
+      // send to backend for verification
+      const body = { ...razorResp }
+      if (pendingPayment && pendingPayment.ride) body.rideId = pendingPayment.ride._id
+      if (pendingPayment && pendingPayment.bookingId) body.bookingId = pendingPayment.bookingId
+      const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/payments/verify`, body, { headers: { Authorization: `Bearer ${token}` } })
+      alert(res.data.message || 'Payment verified and booking confirmed')
+      setPendingPayment(null)
+      fetch()
+    }catch(err){
+      console.error(err)
+      alert(err.response?.data?.message || 'Payment verification failed')
+    }
+  }
+
+  return (
+    <div style={{ 
+      minHeight: '100vh',
+      backgroundColor: 'var(--bg-primary)',
+      padding: '20px'
+    }}>
+      <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+        {/* Header */}
+        <div style={{ marginBottom: '32px' }}>
+          <h1 style={{ 
+            fontSize: '36px', 
+            fontWeight: 'bold',
+            fontFamily: 'var(--font-family-heading)',
+            color: 'var(--text-primary)',
+            margin: '0 0 8px'
+          }}>
+            🔍 Find Your Ride
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+            Discover available rides and book your seat instantly
+          </p>
+        </div>
+
+        {/* Filters Section */}
+        <div style={{
+          backgroundColor: 'var(--bg-secondary)',
+          borderRadius: '16px',
+          padding: '24px',
+          marginBottom: '32px',
+          boxShadow: 'var(--shadow-sm)',
+          border: '1px solid var(--border-color)'
+        }}>
+          <h2 style={{ 
+            fontSize: '20px', 
+            fontWeight: '600',
+            color: 'var(--text-primary)',
+            marginBottom: '20px'
+          }}>
+            🎯 Filter Rides
+          </h2>
+          <div style={{ 
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '16px'
+          }}>
+            <div>
+              <label style={{ 
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: 'var(--text-secondary)',
+                marginBottom: '8px'
+              }}>
+                From
+              </label>
+              <input
+                type="text"
+                placeholder="Starting location"
+                value={filters.from}
+                onChange={(e) => updateFilter('from', e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: '10px', 
+                backgroundColor: 'var(--bg-secondary)', 
+                border: '1px solid var(--border-color)', 
+                color: 'var(--text-primary)' 
+              }}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>To</label>
+            <input
+              type="text"
+              placeholder="Destination"
+              value={filters.to}
+              onChange={(e) => updateFilter('to', e.target.value)}
+              className="w-full p-2 rounded-lg"
+              style={{ 
+                backgroundColor: 'var(--bg-secondary)', 
+                border: '1px solid var(--border-color)', 
+                color: 'var(--text-primary)' 
+              }}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Date</label>
+            <input
+              type="date"
+              value={filters.date}
+              onChange={(e) => updateFilter('date', e.target.value)}
+              className="w-full p-2 rounded-lg"
+              style={{ 
+                backgroundColor: 'var(--bg-secondary)', 
+                border: '1px solid var(--border-color)', 
+                color: 'var(--text-primary)' 
+              }}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Max Price (₹)</label>
+            <input
+              type="number"
+              placeholder="Max price"
+              value={filters.maxPrice}
+              onChange={(e) => updateFilter('maxPrice', e.target.value)}
+              className="w-full p-2 rounded-lg"
+              style={{ 
+                backgroundColor: 'var(--bg-secondary)', 
+                border: '1px solid var(--border-color)', 
+                color: 'var(--text-primary)' 
+              }}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Min Seats</label>
+            <select
+              value={filters.minSeats}
+              onChange={(e) => updateFilter('minSeats', e.target.value)}
+              className="w-full p-2 rounded-lg"
+              style={{ 
+                backgroundColor: 'var(--bg-secondary)', 
+                border: '1px solid var(--border-color)', 
+                color: 'var(--text-primary)' 
+              }}
+            >
+              <option value="">Any</option>
+              <option value="1">1+</option>
+              <option value="2">2+</option>
+              <option value="3">3+</option>
+              <option value="4">4+</option>
+            </select>
+          </div>
+        </div>
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={clearFilters}
+            className="px-4 py-2 rounded-lg transition-colors"
+            style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+          >
+            Clear Filters
+          </button>
+          <div className="text-sm flex items-center" style={{ color: 'var(--text-muted)' }}>
+            Showing {filteredRides.length} of {rides.length} rides
+          </div>
+        </div>
+      </div>
+
+      {/* Results Section */}
+      <div>
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 mx-auto mb-4" style={{ borderBottom: '2px solid var(--mahogany)' }}></div>
+            <p style={{ color: 'var(--text-primary)' }}>Loading rides...</p>
+          </div>
+        ) : filteredRides.length > 0 ? (
+          <div className="grid gap-6">
+            {filteredRides.map(ride => (
+              <RideCard key={ride._id} ride={ride} onBook={onBook} showBookingButton={true} />
+            ))}
+          </div>
+        ) : rides.length > 0 ? (
+          <div className="text-center py-12">
+            <div className="text-6xl mb-4">🔍</div>
+            <h3 className="text-xl font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>No rides match your filters</h3>
+            <p className="mb-4" style={{ color: 'var(--text-muted)' }}>Try adjusting your search criteria</p>
+            <button
+              onClick={clearFilters}
+              className="px-6 py-3 rounded-lg transition-colors btn-primary"
+            >
+              Clear All Filters
+            </button>
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <div className="text-6xl mb-4">🚗</div>
+            <h3 className="text-xl font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>No rides available yet</h3>
+            <p className="mb-6" style={{ color: 'var(--text-muted)' }}>Be the first to create a ride!</p>
+            <button
+              onClick={() => nav('/provide')}
+              className="px-6 py-3 rounded-lg transition-colors btn-primary"
+            >
+              Create a Ride
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Payment Modal */}
+      {pendingPayment && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="p-6 rounded-xl shadow-xl max-w-md w-full" style={{ backgroundColor: 'var(--bg-card)' }}>
+            <h3 className="text-xl font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>💳 Complete Payment</h3>
+            <div className="p-4 rounded-lg mb-4" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+              <p className="font-medium" style={{ color: 'var(--text-primary)' }}>Ride Details:</p>
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                {pendingPayment.ride.from} → {pendingPayment.ride.to}
+              </p>
+              <p className="text-lg font-bold" style={{ color: 'var(--mahogany)' }}>₹{pendingPayment.ride.price}</p>
+            </div>
+            <RazorpayCheckout 
+              order={pendingPayment.order} 
+              keyId={pendingPayment.keyId} 
+              prefill={{name: pendingPayment.ride.providerName}} 
+              onSuccess={onPaymentSuccess} 
+              onError={(e)=>{alert('Checkout failed'); console.error(e)}} 
+            />
+            <button 
+              className="mt-4 w-full py-2 transition-colors" 
+              style={{ color: 'var(--text-muted)' }}
+              onClick={()=>setPendingPayment(null)}
+            >
+              Cancel Payment
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

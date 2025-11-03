@@ -1,0 +1,159 @@
+/* Dark Mode Toggle Button */
+.dark-mode-toggle {
+  position: relative;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  transition: all var(--transition-base);
+}
+
+.dark-mode-toggle:focus {
+  outline: 2px solid var(--brown-500);
+  outline-offset: 2px;
+  border-radius: var(--radius-full);
+}
+
+/* Toggle Track */
+.toggle-track {
+  position: relative;
+  width: 56px;
+  height: 28px;
+  background-color: var(--bg-tertiary);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-full);
+  transition: all var(--transition-base);
+  overflow: hidden;
+}
+
+.dark-mode-toggle:hover .toggle-track {
+  border-color: var(--brown-400);
+  box-shadow: 0 0 0 4px rgba(139, 69, 19, 0.1);
+}
+
+.dark-mode .toggle-track {
+  background-color: var(--brown-800);
+  border-color: var(--brown-600);
+}
+
+/* Toggle Icons */
+.toggle-icons {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 6px;
+  pointer-events: none;
+}
+
+.sun-icon,
+.moon-icon {
+  width: 14px;
+  height: 14px;
+  transition: all var(--transition-base);
+}
+
+.sun-icon {
+  color: var(--warning);
+  animation: rotate 20s linear infinite;
+}
+
+.moon-icon {
+  color: var(--brown-300);
+}
+
+.dark-mode .sun-icon {
+  color: var(--brown-600);
+}
+
+.dark-mode .moon-icon {
+  color: #ffd700;
+}
+
+/* Toggle Thumb */
+.toggle-thumb {
+  position: absolute;
+  top: 2px;
+  width: 20px;
+  height: 20px;
+  background: linear-gradient(135deg, var(--brown-500), var(--brown-600));
+  border-radius: var(--radius-full);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.toggle-thumb.light {
+  left: 2px;
+  transform: translateX(0);
+}
+
+.toggle-thumb.dark {
+  left: 2px;
+  transform: translateX(26px);
+  background: linear-gradient(135deg, var(--brown-700), var(--brown-900));
+}
+
+.dark-mode-toggle:hover .toggle-thumb {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Animations */
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .toggle-track {
+    width: 48px;
+    height: 24px;
+  }
+  
+  .toggle-thumb {
+    width: 18px;
+    height: 18px;
+  }
+  
+  .toggle-thumb.dark {
+    transform: translateX(22px);
+  }
+  
+  .sun-icon,
+  .moon-icon {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .toggle-thumb {
+    transition: transform 0.01ms;
+  }
+  
+  .sun-icon {
+    animation: none;
+  }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  .toggle-track {
+    border-width: 3px;
+  }
+  
+  .toggle-thumb {
+    border: 2px solid currentColor;
+  }
+}
