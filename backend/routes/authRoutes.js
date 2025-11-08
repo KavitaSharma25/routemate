@@ -36,6 +36,10 @@ router.post('/login', [
 ], runValidation, authController.login);
 
 router.get('/profile', protect, authController.getProfile);
+router.put('/profile', protect, authController.updateProfile);
+router.put('/change-password', protect, authController.changePassword);
 router.post('/upload-id', protect, upload.single('driverId'), authController.uploadDriverId);
+router.post('/upload-profile-photo', protect, upload.single('profilePhoto'), authController.uploadProfilePhoto);
+router.get('/public-profile/:userId', authController.getPublicProfile);
 
 module.exports = router;

@@ -11,7 +11,9 @@ import Profile from './pages/Profile'
 import AdminPanel from './pages/AdminPanel'
 import RideHistory from './pages/RideHistory'
 import MyRides from './pages/MyRides'
+import MyBookings from './pages/MyBookings'
 import Dashboard from './pages/Dashboard'
+import PublicProfile from './pages/PublicProfile'
 import NotFound from './pages/NotFound'
 import Navbar from './components/Navbar'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -71,7 +73,9 @@ export default function App(){
           <Route path="/search" element={<RideSearch/>} />
           <Route path="/provide" element={<ProtectedRoute><ProvideRide/></ProtectedRoute>} />
           <Route path="/my-rides" element={<ProtectedRoute><MyRides/></ProtectedRoute>} />
+          <Route path="/my-bookings" element={<ProtectedRoute><MyBookings/></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile/></ProtectedRoute>} />
+          <Route path="/profile/:userId" element={<PublicProfile/>} />
           <Route path="/history" element={<ProtectedRoute><RideHistory/></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute><AdminPanel/></ProtectedRoute>} />
           <Route path="/chat" element={<ProtectedRoute><Chat/></ProtectedRoute>} />

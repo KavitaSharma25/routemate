@@ -13,6 +13,7 @@ router.post('/', protect, [
 ], runValidation, rideController.createRide);
 router.get('/search', rideController.searchRides); // Public endpoint - no auth required
 router.get('/my-rides', protect, rideController.getMyRides);
+router.get('/my-bookings', protect, rideController.getMyBookings);
 router.get('/history', protect, rideController.getRideHistory);
 router.get('/:rideId', protect, rideController.getRideById);
 router.put('/:rideId', protect, rideController.updateRide);

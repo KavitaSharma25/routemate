@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from 'react'
 import { useChat } from '../context/ChatContext'
 
 export default function LiveTrackerControl({ rideId }){
-  const { sendLocation } = useChat()
+  const chatContext = useChat()
+  const sendLocation = chatContext?.sendLocation || (() => console.log('ChatContext not available'))
   const watchIdRef = useRef(null)
   const [running, setRunning] = useState(false)
 

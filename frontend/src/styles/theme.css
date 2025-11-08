@@ -41,11 +41,11 @@
   --accent-platinum: #E8EEF2;
   
   /* Semantic Colors - Light Mode */
-  --bg-primary: #F9F3EF;
-  --bg-secondary: #F5EDE7;
-  --bg-tertiary: #E8DDD3;
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #FDFCFB;
+  --bg-tertiary: #F9F3EF;
   --bg-card: #FFFFFF;
-  --bg-hover: #F5EDE7;
+  --bg-hover: #F9F3EF;
   --bg-active: #E8DDD3;
   --bg-overlay: rgba(27, 60, 83, 0.05);
   --bg-glass: rgba(249, 243, 239, 0.8);
@@ -212,7 +212,7 @@ h1 {
    ========================================== */
 
 .nav-bg {
-  background: linear-gradient(135deg, rgba(27, 60, 83, 0.95), rgba(0, 0, 0, 0.98));
+  background: linear-gradient(135deg, rgba(163, 190, 209, 0.95), rgba(11, 43, 68, 0.95));
   border-bottom: 1px solid var(--border-luxury);
   backdrop-filter: blur(20px);
   box-shadow: var(--shadow-luxury);

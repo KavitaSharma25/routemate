@@ -1,7 +1,9 @@
 import React, { useState } from 'react'
 import axios from 'axios'
+import { useNavigate } from 'react-router-dom'
 import MapComponent from '../components/MapComponent'
 import LiveTrackerControl from '../components/LiveTrackerControl'
+import { useAuth } from '../context/AuthContext'
 
 export default function ProvideRide(){
   const [from,setFrom]=useState('')
@@ -12,9 +14,16 @@ export default function ProvideRide(){
   const [price,setPrice]=useState(0)
   const [msg,setMsg]=useState(null)
   const [createdRideId, setCreatedRideId] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [createdRideDetails, setCreatedRideDetails] = useState(null)
+  const navigate = useNavigate()
+  const { token } = useAuth()
 
   const submit = async (e) => {
     e.preventDefault()
+    
+    // Clear previous messages
+    setMsg(null)
     
     // Basic validation
     if (!from || !to) {
@@ -25,40 +34,81 @@ export default function ProvideRide(){
       setMsg('❌ Please select date and time')
       return
     }
+    
+    // Validate date is in the future
+    const selectedDate = new Date(date)
+    const now = new Date()
+    if (selectedDate < now) {
+      setMsg('❌ Please select a future date and time')
+      return
+    }
+    
     if (seats < 1 || seats > 8) {
       setMsg('❌ Please enter valid number of seats (1-8)')
       return
     }
     if (price < 0) {
-      setMsg('❌ Please enter a valid price')
+      setMsg('❌ Please enter a valid price (minimum ₹0)')
       return
     }
     
+    setLoading(true)
+    
     try{
-      const token = localStorage.getItem('token')
-      const body = { from, to, date, seatsAvailable:seats, price }
+      const authToken = token || localStorage.getItem('token')
+      
+      if (!authToken) {
+        setMsg('❌ Please login to create a ride')
+        setLoading(false)
+        setTimeout(() => navigate('/login'), 2000)
+        return
+      }
+      
+      const body = { 
+        from: from.trim(), 
+        to: to.trim(), 
+        date, 
+        seatsAvailable: parseInt(seats), 
+        price: parseFloat(price) 
+      }
+      
       if (routeObj) body.route = routeObj.route || routeObj
       
-      setMsg('⏳ Creating ride...')
-      const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/rides`, body, { headers: { Authorization: `Bearer ${token}` } })
+      setMsg('⏳ Creating your ride...')
+      
+      const res = await axios.post(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/rides`, 
+        body, 
+        { headers: { Authorization: `Bearer ${authToken}` } }
+      )
+      
       setMsg('✅ Ride created successfully!')
       
-      // if backend returned created ride id/object, keep it so provider can start live-tracking
+      // Store created ride details
       const created = res.data && (res.data.ride || res.data)
-      if (created && (created._id || created.id)) setCreatedRideId(created._id || created.id)
+      if (created && (created._id || created.id)) {
+        setCreatedRideId(created._id || created.id)
+        setCreatedRideDetails(created)
+      }
       
       // Reset form
-      setTimeout(() => {
-        setFrom('')
-        setTo('')
-        setDate('')
-        setSeats(1)
-        setPrice(0)
-        setRouteObj(null)
-      }, 2000)
+      setFrom('')
+      setTo('')
+      setDate('')
+      setSeats(1)
+      setPrice(0)
+      setRouteObj(null)
+      setLoading(false)
+      
+      // Scroll to top to show success message
+      window.scrollTo({ top: 0, behavior: 'smooth' })
       
     }catch(err){
-      setMsg('❌ ' + (err.response?.data?.message || 'Error creating ride'))
+      console.error('Create ride error:', err)
+      const errorMsg = err.response?.data?.message || err.response?.data?.errors?.[0]?.msg || 'Error creating ride'
+      setMsg('❌ ' + errorMsg)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -125,26 +175,53 @@ export default function ProvideRide(){
               borderRadius: '12px',
               marginBottom: '24px',
               fontWeight: '500',
-              border: `1px solid ${msg.includes('✅') ? '#c3e6cb' : msg.includes('❌') ? '#f5c6cb' : '#bee5eb'}`
+              border: `1px solid ${msg.includes('✅') ? '#c3e6cb' : msg.includes('❌') ? '#f5c6cb' : '#bee5eb'}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '12px'
             }}>
-              {msg}
+              <span>{msg}</span>
+              {msg.includes('✅') && (
+                <button
+                  onClick={() => navigate('/my-rides')}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#155724',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    fontSize: '14px',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseOver={(e) => e.target.style.backgroundColor = '#0d3d1a'}
+                  onMouseOut={(e) => e.target.style.backgroundColor = '#155724'}
+                >
+                  View My Rides →
+                </button>
+              )}
             </div>
           )}
 
           <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             
             {/* Map Component */}
-            <div style={{
-              backgroundColor: 'var(--bg-primary)',
-              borderRadius: '12px',
-              padding: '16px',
-              border: '1px solid var(--border-color)'
-            }}>
-              <MapComponent 
-                apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY} 
-                onRouteSelected={onRouteSelected} 
-              />
-            </div>
+            {import.meta.env.VITE_GOOGLE_MAPS_API_KEY && import.meta.env.VITE_GOOGLE_MAPS_API_KEY !== 'your_google_maps_api_key_here' ? (
+              <div style={{
+                backgroundColor: 'var(--bg-primary)',
+                borderRadius: '12px',
+                padding: '16px',
+                border: '1px solid var(--border-color)'
+              }}>
+                <MapComponent 
+                  apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY} 
+                  onRouteSelected={onRouteSelected} 
+                />
+              </div>
+            ) : null}
             
             {/* Manual input fields when maps not configured */}
             {(!import.meta.env.VITE_GOOGLE_MAPS_API_KEY || import.meta.env.VITE_GOOGLE_MAPS_API_KEY === 'your_google_maps_api_key_here') && (
@@ -189,14 +266,23 @@ export default function ProvideRide(){
             
             {/* Date and Time */}
             <div>
-              <label style={labelStyle}>📅 Date & Time</label>
+              <label style={labelStyle}>📅 Date & Time *</label>
               <input 
                 value={date} 
                 onChange={e=>setDate(e.target.value)} 
                 type="datetime-local" 
-                style={inputStyle}
+                style={{
+                  ...inputStyle,
+                  border: date && new Date(date) < new Date() ? '2px solid #dc3545' : inputStyle.border
+                }}
+                min={new Date().toISOString().slice(0, 16)}
                 required 
               />
+              {date && new Date(date) < new Date() && (
+                <p style={{ fontSize: '12px', color: '#dc3545', marginTop: '6px' }}>
+                  ⚠️ Please select a future date and time
+                </p>
+              )}
               <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '6px' }}>
                 When are you planning to start your journey?
               </p>
@@ -205,7 +291,7 @@ export default function ProvideRide(){
             {/* Seats and Price */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div>
-                <label style={labelStyle}>💺 Available Seats</label>
+                <label style={labelStyle}>💺 Available Seats *</label>
                 <input 
                   value={seats} 
                   onChange={e=>setSeats(e.target.value)} 
@@ -213,19 +299,31 @@ export default function ProvideRide(){
                   min={1} 
                   max={8} 
                   placeholder="1-8" 
-                  style={inputStyle}
+                  style={{
+                    ...inputStyle,
+                    border: (seats < 1 || seats > 8) ? '2px solid #dc3545' : inputStyle.border
+                  }}
                   required 
                 />
+                {(seats < 1 || seats > 8) && (
+                  <p style={{ fontSize: '12px', color: '#dc3545', marginTop: '4px' }}>
+                    Must be between 1-8
+                  </p>
+                )}
               </div>
               <div>
-                <label style={labelStyle}>💰 Price per Seat</label>
+                <label style={labelStyle}>💰 Price per Seat *</label>
                 <input 
                   value={price} 
                   onChange={e=>setPrice(e.target.value)} 
                   type="number" 
                   min={0} 
+                  step="10"
                   placeholder="₹ Amount" 
-                  style={inputStyle}
+                  style={{
+                    ...inputStyle,
+                    border: price < 0 ? '2px solid #dc3545' : inputStyle.border
+                  }}
                   required 
                 />
               </div>
@@ -234,6 +332,7 @@ export default function ProvideRide(){
             {/* Submit Button */}
             <button 
               type="submit"
+              disabled={loading || !from || !to || !date || seats < 1 || seats > 8 || price < 0}
               className="btn-primary"
               style={{
                 width: '100%',
@@ -241,11 +340,85 @@ export default function ProvideRide(){
                 fontSize: '16px',
                 fontWeight: '600',
                 borderRadius: '12px',
-                marginTop: '8px'
+                marginTop: '8px',
+                opacity: (loading || !from || !to || !date || seats < 1 || seats > 8 || price < 0) ? 0.6 : 1,
+                cursor: (loading || !from || !to || !date || seats < 1 || seats > 8 || price < 0) ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
               }}
             >
-              Create Ride 🚀
+              {loading ? (
+                <>
+                  <span style={{
+                    width: '16px',
+                    height: '16px',
+                    border: '2px solid #ffffff',
+                    borderTopColor: 'transparent',
+                    borderRadius: '50%',
+                    animation: 'spin 0.8s linear infinite'
+                  }}></span>
+                  Creating Ride...
+                </>
+              ) : (
+                <>
+                  Create Ride 🚀
+                </>
+              )}
             </button>
+            
+            {/* Summary Preview */}
+            {from && to && date && seats && price >= 0 && (
+              <div style={{
+                backgroundColor: 'var(--bg-primary)',
+                borderRadius: '12px',
+                padding: '20px',
+                border: '1px solid var(--gold-accent)'
+              }}>
+                <h4 style={{
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  color: 'var(--text-primary)',
+                  marginBottom: '12px'
+                }}>
+                  📋 Ride Summary
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Route:</span>
+                    <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{from} → {to}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Date & Time:</span>
+                    <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
+                      {new Date(date).toLocaleString('en-IN', { 
+                        dateStyle: 'medium', 
+                        timeStyle: 'short' 
+                      })}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Available Seats:</span>
+                    <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{seats}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Price per Seat:</span>
+                    <span style={{ fontWeight: '600', color: 'var(--gold-accent)', fontSize: '16px' }}>₹{price}</span>
+                  </div>
+                  <div style={{ 
+                    marginTop: '8px', 
+                    paddingTop: '12px', 
+                    borderTop: '1px solid var(--border-color)',
+                    display: 'flex',
+                    justifyContent: 'space-between'
+                  }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Total Earnings (if full):</span>
+                    <span style={{ fontWeight: '700', color: 'var(--gold-accent)', fontSize: '18px' }}>₹{price * seats}</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </form>
 
           {/* Live Tracking Section */}
@@ -272,7 +445,7 @@ export default function ProvideRide(){
               }}>
                 Start streaming your location when you're ready to begin the journey.
               </p>
-              <LiveTrackerControl rideId={createdRideId} />
+              {createdRideId && <LiveTrackerControl rideId={createdRideId} />}
             </div>
           )}
         </div>
@@ -320,6 +493,15 @@ export default function ProvideRide(){
           </ul>
         </div>
       </div>
+      
+      {/* CSS for Spinner Animation */}
+      <style>{`
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+      `}</style>
     </div>
   )
 }

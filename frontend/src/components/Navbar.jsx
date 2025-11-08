@@ -47,10 +47,7 @@ export default function Navbar(){
               fontFamily: "'Playfair Display', Georgia, serif",
               fontWeight: '700',
               fontSize: '1.25rem',
-              background: 'linear-gradient(135deg, #C9DBEF 0%, #FFE55C 50%, #FFDF3E 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
+              color: '#3D4549',
               letterSpacing: '-0.02em'
             }}>
               RouteMate
@@ -63,6 +60,7 @@ export default function Navbar(){
             <Link to="/search" className="btn btn-secondary touch-target">Find Rides</Link>
             <Link to="/provide" className="btn btn-primary touch-target">Provide Ride</Link>
             {token && <Link to="/my-rides" className="nav-link my-rides touch-target">My Rides</Link>}
+            {token && <Link to="/my-bookings" className="nav-link my-bookings touch-target">My Bookings</Link>}
             {token ? (
               <div className="nav-user-section">
                 <span className="nav-username">{user?.name || 'You'}</span>
