@@ -1,5 +1,9 @@
 const Message = require('../models/Message');
 
+/**
+ * Send a chat message
+ * Creates and saves a message for a specific ride chat
+ */
 exports.sendMessage = async (req, res) => {
   try {
     const { to, rideId, content } = req.body;
@@ -12,6 +16,10 @@ exports.sendMessage = async (req, res) => {
   }
 };
 
+/**
+ * Get all messages for a specific ride
+ * Returns chat history with sender information
+ */
 exports.getMessagesForRide = async (req, res) => {
   try {
     const { rideId } = req.params;

@@ -101,15 +101,20 @@ io.on('connection', async (socket) => {
       const uid = socket.user && socket.user.id;
       const isProvider = ride.provider && ride.provider.toString() === uid;
       const isPassenger = ride.passengers && ride.passengers.some(p => p.toString() === uid);
-  // only allow users with confirmed bookings to join (or provider/passenger)
-  const hasBooking = ride.bookings && ride.bookings.some(b => (b.user && b.user.toString() === uid && b.status === 'confirmed'));
+      // allow users with ANY booking (pending, confirmed, declined) to join chat
+      const hasBooking = ride.bookings && ride.bookings.some(b => (b.user && b.user.toString() === uid));
 
       if (isProvider || isPassenger || hasBooking) {
         socket.join(room);
+        const socketsInRoom = await io.in(room).allSockets();
+        console.log(`User ${uid} (${socket.user.name}) joined room ${room}. Total sockets in room: ${socketsInRoom.size}`);
+        console.log(`  - isProvider: ${isProvider}, isPassenger: ${isPassenger}, hasBooking: ${hasBooking}`);
         socket.emit('joinedRoom', { room });
         // notify others in room about presence
         io.to(room).emit('user_joined', { room, userId: uid, name: socket.user.name });
       } else {
+        console.log(`User ${uid} (${socket.user.name}) forbidden from joining room ${room}`);
+        console.log(`  - isProvider: ${isProvider}, isPassenger: ${isPassenger}, hasBooking: ${hasBooking}`);
         socket.emit('forbidden', { message: 'Not authorized to join this room' });
       }
     } catch (err) {
@@ -167,6 +172,14 @@ io.on('connection', async (socket) => {
         createdAt: populated.createdAt
       };
 
+      // Get all sockets in the room to verify broadcast
+      const socketsInRoom = await io.in(roomName).allSockets();
+      console.log(`Broadcasting message to room ${roomName}:`, {
+        message: out.message,
+        from: out.fromName,
+        socketsCount: socketsInRoom.size,
+        sockets: Array.from(socketsInRoom)
+      });
       io.to(roomName).emit('chatMessage', out);
     } catch (err) {
       console.error('Error handling chatMessage:', err);

@@ -16,7 +16,7 @@ export default function Login(){
       const token = res.data.token || res.data.accessToken
       const user = res.data.user || { id: res.data.userId || res.data._id || null, email: data.email }
       if (token) login({ token, user })
-      nav('/')
+      nav('/dashboard')
     }catch(err){
       setError('root', { message: err.response?.data?.message || 'Login failed' })
     }
@@ -145,15 +145,36 @@ export default function Login(){
         borderTop: '1px solid var(--border-color)',
         textAlign: 'center'
       }}>
-        <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
-          Don't have an account?{' '}
-          <Link 
-            to="/register" 
-            style={{ color: 'var(--navy-600)', fontWeight: '600', textDecoration: 'none' }}
-          >
-            Register here
-          </Link>
+        <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '12px' }}>
+          Don't have an account?
         </p>
+        <Link 
+          to="/register" 
+          style={{ 
+            display: 'inline-block',
+            padding: '10px 24px',
+            background: 'linear-gradient(135deg, var(--accent-gold), #b8935e)',
+            color: 'white',
+            fontWeight: '600',
+            textDecoration: 'none',
+            borderRadius: '8px',
+            border: '1px solid var(--accent-gold)',
+            boxShadow: '0 2px 8px rgba(201, 169, 97, 0.25)',
+            transition: 'all 0.2s ease'
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.background = 'linear-gradient(135deg, #b8935e, var(--accent-gold))';
+            e.target.style.transform = 'translateY(-2px)';
+            e.target.style.boxShadow = '0 4px 12px rgba(201, 169, 97, 0.35)';
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.background = 'linear-gradient(135deg, var(--accent-gold), #b8935e)';
+            e.target.style.transform = 'translateY(0)';
+            e.target.style.boxShadow = '0 2px 8px rgba(201, 169, 97, 0.25)';
+          }}
+        >
+          Register Now
+        </Link>
       </div>
         </div>
       </div>

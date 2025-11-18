@@ -24,7 +24,7 @@ export default function Profile(){
   const fetchProfile = async () => {
     try{
       const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/profile`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: 'Bearer ' + token }
       })
       setProfile(res.data)
       setEditData({
@@ -45,10 +45,10 @@ export default function Profile(){
     try {
       const [ridesRes, bookingsRes] = await Promise.all([
         axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/rides/my-rides`, {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: 'Bearer ' + token }
         }),
         axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/rides/my-bookings`, {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: 'Bearer ' + token }
         })
       ])
       
@@ -79,7 +79,7 @@ export default function Profile(){
       
       const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/upload-profile-photo`, formData, {
         headers: { 
-          Authorization: `Bearer ${token}`,
+          Authorization: 'Bearer ' + token,
           'Content-Type': 'multipart/form-data'
         }
       })
@@ -106,9 +106,9 @@ export default function Profile(){
       const formData = new FormData()
       formData.append('driverId', file)
       
-      const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/upload-id', formData, {
+      const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/upload-id`, formData, {
         headers: { 
-          Authorization: `Bearer ${token}`,
+          Authorization: 'Bearer ' + token,
           'Content-Type': 'multipart/form-data'
         }
       })
@@ -132,7 +132,7 @@ export default function Profile(){
       const res = await axios.put(
         `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/profile`,
         editData,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: 'Bearer ' + token } }
       )
       
       setProfile(res.data)
@@ -168,7 +168,7 @@ export default function Profile(){
           currentPassword: passwordData.currentPassword,
           newPassword: passwordData.newPassword
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: 'Bearer ' + token } }
       )
       
       setMsg('✅ Password changed successfully!')
@@ -200,111 +200,388 @@ export default function Profile(){
   const userInfo = profile || user || {}
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
-          👤 My Profile
-        </h1>
-        <p style={{ color: 'var(--text-muted)' }}>Manage your account and preferences</p>
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-primary)' }}>
+      {/* Profile Banner */}
+      <div style={{
+        background: 'linear-gradient(135deg, var(--navy-600), var(--navy-700))',
+        padding: 'clamp(40px, 8vw, 80px) clamp(16px, 3vw, 24px) clamp(60px, 10vw, 100px)',
+        position: 'relative',
+        overflow: 'hidden'
+      }}>
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'radial-gradient(circle at top right, rgba(201, 169, 97, 0.2), transparent)',
+          pointerEvents: 'none'
+        }} />
+        
+        <div style={{ maxWidth: '1400px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 'clamp(20px, 4vw, 32px)', flexWrap: 'wrap' }}>
+            {/* Profile Photo */}
+            <div style={{ position: 'relative' }}>
+              {userInfo.profilePhoto ? (
+                <img
+                  src={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${userInfo.profilePhoto}`}
+                  alt="Profile"
+                  style={{
+                    width: 'clamp(100px, 20vw, 140px)',
+                    height: 'clamp(100px, 20vw, 140px)',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: '5px solid white',
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
+                  }}
+                />
+              ) : (
+                <div style={{
+                  width: 'clamp(100px, 20vw, 140px)',
+                  height: 'clamp(100px, 20vw, 140px)',
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, var(--gold-accent), #b8935f)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 'clamp(48px, 10vw, 64px)',
+                  fontWeight: 'bold',
+                  color: 'white',
+                  border: '5px solid white',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
+                }}>
+                  {userInfo.name?.charAt(0).toUpperCase()}
+                </div>
+              )}
+              
+              {/* Camera Icon Overlay */}
+              <label style={{
+                position: 'absolute',
+                bottom: '8px',
+                right: '8px',
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                background: 'var(--gold-accent)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                border: '3px solid white',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+                transition: 'all 0.3s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.1)'
+                e.currentTarget.style.background = '#b8935f'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)'
+                e.currentTarget.style.background = 'var(--gold-accent)'
+              }}>
+                <span style={{ fontSize: '20px' }}>📷</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleProfilePhotoUpload}
+                  disabled={uploading}
+                  style={{ display: 'none' }}
+                />
+              </label>
+            </div>
+            
+            {/* Profile Info */}
+            <div style={{ flex: 1, minWidth: '200px', paddingBottom: '8px' }}>
+              <h1 style={{
+                fontSize: 'clamp(28px, 5vw, 42px)',
+                fontWeight: 'bold',
+                color: 'white',
+                marginBottom: '8px',
+                fontFamily: 'var(--font-family-heading)'
+              }}>
+                {userInfo.name || 'User'}
+              </h1>
+              <p style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: 'clamp(14px, 2.5vw, 16px)', marginBottom: '12px' }}>
+                ✉️ {userInfo.email || 'No email'}
+              </p>
+              
+              {/* Badges */}
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <div style={{
+                  padding: '6px 12px',
+                  borderRadius: '20px',
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  backdropFilter: 'blur(10px)',
+                  color: 'white',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <span>👤</span> {userInfo.role || 'User'}
+                </div>
+                {userInfo.driverVerified && (
+                  <div style={{
+                    padding: '6px 12px',
+                    borderRadius: '20px',
+                    background: 'rgba(16, 185, 129, 0.9)',
+                    color: 'white',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    <span>✅</span> Verified Driver
+                  </div>
+                )}
+                {userInfo.createdAt && (
+                  <div style={{
+                    padding: '6px 12px',
+                    borderRadius: '20px',
+                    background: 'rgba(255, 255, 255, 0.2)',
+                    backdropFilter: 'blur(10px)',
+                    color: 'white',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    <span>📅</span> Member since {new Date(userInfo.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-
+      
+      {/* Main Content */}
+      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: 'clamp(16px, 3vw, 24px)', marginTop: '-40px', position: 'relative', zIndex: 2 }}>
+      
       {/* Message Alert */}
       {msg && (
         <div 
-          className="mb-6 p-4 rounded-lg animate-slideDown"
           style={{
+            marginBottom: '24px',
+            padding: '16px 20px',
+            borderRadius: '12px',
             backgroundColor: msg.includes('✅') ? '#d4edda' : '#f8d7da',
             color: msg.includes('✅') ? '#155724' : '#721c24',
-            border: `1px solid ${msg.includes('✅') ? '#c3e6cb' : '#f5c6cb'}`
+            border: `1px solid ${msg.includes('✅') ? '#c3e6cb' : '#f5c6cb'}`,
+            fontSize: '14px',
+            fontWeight: '500',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+            animation: 'slideDown 0.3s ease'
           }}
         >
           {msg}
         </div>
       )}
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="rounded-xl shadow-lg p-6" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
-          <div className="text-3xl mb-2">🚗</div>
-          <div className="text-3xl font-bold mb-1" style={{ color: 'var(--accent-gold)' }}>{stats.totalRides}</div>
-          <div className="text-sm" style={{ color: 'var(--text-muted)' }}>Rides Offered</div>
-        </div>
-        
-        <div className="rounded-xl shadow-lg p-6" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
-          <div className="text-3xl mb-2">🎫</div>
-          <div className="text-3xl font-bold mb-1" style={{ color: 'var(--accent-gold)' }}>{stats.totalBookings}</div>
-          <div className="text-sm" style={{ color: 'var(--text-muted)' }}>Rides Booked</div>
-        </div>
-        
-        <div className="rounded-xl shadow-lg p-6" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
-          <div className="text-3xl mb-2">⭐</div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-3xl font-bold" style={{ color: 'var(--accent-gold)' }}>
-              {userInfo.averageRating?.toFixed(1) || '0.0'}
-            </span>
-            <StarRating rating={userInfo.averageRating} size="sm" />
-          </div>
-          <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            ({userInfo.totalRatings || 0} reviews)
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Column */}
-        <div className="space-y-6">
-          {/* Profile Photo Card */}
-          <div className="rounded-xl shadow-lg p-6" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
-            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
-              📸 Profile Photo
-            </h3>
-            
-            <div className="flex flex-col items-center gap-4">
-              {/* Photo Display */}
-              {userInfo.profilePhoto ? (
-                <img
-                  src={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${userInfo.profilePhoto}`}
-                  alt="Profile"
-                  className="w-32 h-32 rounded-full object-cover"
-                  style={{ border: '4px solid var(--accent-gold)' }}
-                />
-              ) : (
-                <div 
-                  className="w-32 h-32 rounded-full flex items-center justify-center text-5xl font-bold"
-                  style={{ 
-                    backgroundColor: 'var(--accent-gold)', 
-                    color: 'white',
-                    border: '4px solid var(--border-color)'
-                  }}
-                >
-                  {userInfo.name?.charAt(0).toUpperCase()}
-                </div>
-              )}
-              
-              {/* Upload Button */}
-              <label 
-                className="px-4 py-2 rounded-lg cursor-pointer transition-all hover:opacity-80 text-center"
-                style={{ backgroundColor: 'var(--accent-gold)', color: 'white', fontWeight: '600' }}
-              >
-                {uploading ? 'Uploading...' : userInfo.profilePhoto ? 'Change Photo' : 'Upload Photo'}
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleProfilePhotoUpload}
-                  disabled={uploading}
-                  className="hidden"
-                />
-              </label>
-              
-              <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
-                JPG, PNG or GIF (max 5MB)
-              </p>
+        {/* Stats Cards */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))',
+          gap: '20px',
+          marginBottom: '32px'
+        }}>
+          {/* Rides Offered */}
+          <div style={{
+            backgroundColor: 'var(--bg-secondary)',
+            borderRadius: '16px',
+            padding: '24px',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+            border: '1px solid var(--border-color)',
+            borderTop: '4px solid var(--navy-600)',
+            transition: 'all 0.3s ease',
+            cursor: 'default'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-4px)'
+            e.currentTarget.style.boxShadow = '0 12px 24px rgba(0, 0, 0, 0.1)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)'
+            e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.05)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '16px',
+                background: 'linear-gradient(135deg, var(--navy-600), var(--navy-700))',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '32px'
+              }}>🚗</div>
+              <div>
+                <div style={{
+                  fontSize: '36px',
+                  fontWeight: 'bold',
+                  color: 'var(--text-primary)',
+                  fontFamily: 'var(--font-family-heading)',
+                  lineHeight: 1
+                }}>{stats.totalRides}</div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '4px' }}>Rides Offered</div>
+              </div>
             </div>
           </div>
+          
+          {/* Rides Booked */}
+          <div style={{
+            backgroundColor: 'var(--bg-secondary)',
+            borderRadius: '16px',
+            padding: '24px',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+            border: '1px solid var(--border-color)',
+            borderTop: '4px solid #8b5cf6',
+            transition: 'all 0.3s ease',
+            cursor: 'default'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-4px)'
+            e.currentTarget.style.boxShadow = '0 12px 24px rgba(0, 0, 0, 0.1)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)'
+            e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.05)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '16px',
+                background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '32px'
+              }}>🎫</div>
+              <div>
+                <div style={{
+                  fontSize: '36px',
+                  fontWeight: 'bold',
+                  color: 'var(--text-primary)',
+                  fontFamily: 'var(--font-family-heading)',
+                  lineHeight: 1
+                }}>{stats.totalBookings}</div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '4px' }}>Rides Booked</div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Completed */}
+          <div style={{
+            backgroundColor: 'var(--bg-secondary)',
+            borderRadius: '16px',
+            padding: '24px',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+            border: '1px solid var(--border-color)',
+            borderTop: '4px solid #10b981',
+            transition: 'all 0.3s ease',
+            cursor: 'default'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-4px)'
+            e.currentTarget.style.boxShadow = '0 12px 24px rgba(0, 0, 0, 0.1)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)'
+            e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.05)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '16px',
+                background: 'linear-gradient(135deg, #10b981, #059669)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '32px'
+              }}>✅</div>
+              <div>
+                <div style={{
+                  fontSize: '36px',
+                  fontWeight: 'bold',
+                  color: 'var(--text-primary)',
+                  fontFamily: 'var(--font-family-heading)',
+                  lineHeight: 1
+                }}>{stats.completedRides}</div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '4px' }}>Completed</div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Rating */}
+          <div style={{
+            backgroundColor: 'var(--bg-secondary)',
+            borderRadius: '16px',
+            padding: '24px',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+            border: '1px solid var(--border-color)',
+            borderTop: '4px solid var(--gold-accent)',
+            transition: 'all 0.3s ease',
+            cursor: 'default'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-4px)'
+            e.currentTarget.style.boxShadow = '0 12px 24px rgba(0, 0, 0, 0.1)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)'
+            e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.05)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '16px',
+                background: 'linear-gradient(135deg, var(--gold-accent), #b8935f)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '32px'
+              }}>⭐</div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{
+                    fontSize: '36px',
+                    fontWeight: 'bold',
+                    color: 'var(--text-primary)',
+                    fontFamily: 'var(--font-family-heading)',
+                    lineHeight: 1
+                  }}>{userInfo.averageRating?.toFixed(1) || '0.0'}</div>
+                  <StarRating rating={userInfo.averageRating} size="sm" />
+                </div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '4px' }}>
+                  {userInfo.totalRatings || 0} reviews
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
-          {/* Basic Info Card */}
-          <div className="rounded-xl shadow-lg p-6" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 500px), 1fr))',
+          gap: '24px'
+        }}>
+          {/* Left Column */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+            {/* Basic Info Card */}
+            <div style={{
+              backgroundColor: 'var(--bg-secondary)',
+              borderRadius: '16px',
+              padding: '24px',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+              border: '1px solid var(--border-color)'
+            }}>
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
                 📋 Profile Information
@@ -446,16 +723,21 @@ export default function Profile(){
                     {userInfo.role || 'user'}
                   </div>
                 </div>
-              </div>
+                </div>
             )}
+            </div>
           </div>
 
-        </div>
-
-        {/* Right Column */}
-        <div className="space-y-6">
-          {/* Driver Verification */}
-          <div className="rounded-xl shadow-lg p-6" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
+          {/* Right Column */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            {/* Driver Verification */}
+            <div style={{
+              backgroundColor: 'var(--bg-secondary)',
+              borderRadius: '16px',
+              padding: '24px',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+              border: '1px solid var(--border-color)'
+            }}>
             <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
               🚗 Driver Verification
             </h3>
@@ -536,10 +818,16 @@ export default function Profile(){
           </form>
         )}
 
-          </div>
+            </div>
 
-          {/* Account Settings */}
-          <div className="rounded-xl shadow-lg p-6" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
+            {/* Account Settings */}
+            <div style={{
+              backgroundColor: 'var(--bg-secondary)',
+              borderRadius: '16px',
+              padding: '24px',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+              border: '1px solid var(--border-color)'
+            }}>
             <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
               ⚙️ Account Settings
             </h3>
@@ -566,6 +854,7 @@ export default function Profile(){
                     </div>
                   </div>
                 </div>
+              </div>
               </div>
             </div>
           </div>

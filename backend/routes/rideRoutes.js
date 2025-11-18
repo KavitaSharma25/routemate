@@ -21,6 +21,7 @@ router.delete('/:rideId', protect, rideController.deleteRide);
 router.post('/:rideId/book', protect, rideController.bookRide);
 router.post('/:rideId/bookings/:bookingId/confirm', protect, rideController.confirmBooking);
 router.post('/:rideId/bookings/:bookingId/decline', protect, rideController.declineBooking);
+router.post('/:rideId/bookings/:bookingId/complete', protect, rideController.markRideComplete);
 router.post('/:rideId/cancel', protect, rideController.cancelRide);
 router.post('/:rideId/report', protect, rideController.reportRide);
 

@@ -29,6 +29,7 @@ export function ChatProvider({ children }){
     socket.on('disconnect', ()=>{ setConnected(false) })
 
     socket.on('chatMessage', (msg)=>{
+      console.log('Received chat message:', msg)
       setMessages(prev=>[...prev, msg])
     })
       socket.on('location_update', (data)=>{

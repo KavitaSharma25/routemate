@@ -7,11 +7,14 @@ import axios from 'axios'
 const Dashboard = () => {
   const [upcomingRides, setUpcomingRides] = useState([])
   const [myRides, setMyRides] = useState([])
+  const [myBookings, setMyBookings] = useState([])
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({
     totalRides: 0,
+    totalBookings: 0,
     totalSaved: 0,
-    co2Reduced: 0
+    co2Reduced: 0,
+    averageRating: 0
   })
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -33,11 +36,37 @@ const Dashboard = () => {
       
       setUpcomingRides(ridesRes.data.slice(0, 4))
       
-      // Calculate mock stats (replace with real API calls)
+      // Fetch my rides (rides I've offered)
+      const myRidesRes = await axios.get(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/rides/my-rides`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      setMyRides(myRidesRes.data.slice(0, 3))
+      
+      // Fetch my bookings
+      const bookingsRes = await axios.get(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/rides/my-bookings`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      setMyBookings(bookingsRes.data.slice(0, 3))
+      
+      // Calculate real stats
+      const totalRides = myRidesRes.data.length
+      const totalBookings = bookingsRes.data.length
+      const totalTrips = totalRides + totalBookings
+      
+      // Estimate savings: ₹50 per trip
+      const totalSaved = totalTrips * 50
+      
+      // Estimate CO2: 2.5 kg per trip
+      const co2Reduced = totalTrips * 2.5
+      
       setStats({
-        totalRides: Math.floor(Math.random() * 50) + 10,
-        totalSaved: Math.floor(Math.random() * 5000) + 1000,
-        co2Reduced: Math.floor(Math.random() * 100) + 20
+        totalRides,
+        totalBookings,
+        totalSaved,
+        co2Reduced: Math.round(co2Reduced * 10) / 10,
+        averageRating: user?.averageRating || 0
       })
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
@@ -50,7 +79,7 @@ const Dashboard = () => {
     <div style={{ 
       minHeight: '100vh', 
       backgroundColor: 'var(--bg-primary)',
-      padding: '20px'
+      padding: 'clamp(12px, 3vw, 20px)'
     }}>
       <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
         
@@ -65,7 +94,7 @@ const Dashboard = () => {
         }}>
           <div>
             <h1 style={{ 
-              fontSize: '36px', 
+              fontSize: 'clamp(28px, 5vw, 36px)', 
               fontWeight: 'bold',
               fontFamily: 'var(--font-family-heading)',
               color: 'var(--text-primary)',
@@ -73,28 +102,83 @@ const Dashboard = () => {
             }}>
               Dashboard
             </h1>
-            <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+            <p style={{ 
+              color: 'var(--text-secondary)', 
+              margin: 0,
+              fontSize: 'clamp(14px, 2vw, 16px)'
+            }}>
               Welcome back, {user?.name || 'User'}! Here's your carpool overview.
             </p>
           </div>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <Link to="/search" className="btn-primary" style={{ padding: '12px 24px', borderRadius: '10px' }}>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            <button 
+              onClick={() => navigate('/search')}
+              style={{
+                padding: '12px 24px',
+                borderRadius: '10px',
+                border: 'none',
+                background: 'linear-gradient(135deg, var(--navy-600), var(--navy-700))',
+                color: 'white',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                boxShadow: 'var(--shadow-sm)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)'
+                e.currentTarget.style.boxShadow = 'var(--shadow-luxury)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)'
+                e.currentTarget.style.boxShadow = 'var(--shadow-sm)'
+              }}
+            >
               🔍 Find Rides
-            </Link>
-            <Link to="/provide" className="btn-secondary" style={{ padding: '12px 24px', borderRadius: '10px' }}>
+            </button>
+            <button 
+              onClick={() => navigate('/provide')}
+              style={{
+                padding: '12px 24px',
+                borderRadius: '10px',
+                border: '2px solid var(--navy-600)',
+                background: 'transparent',
+                color: 'var(--navy-600)',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--navy-600)'
+                e.currentTarget.style.color = 'white'
+                e.currentTarget.style.transform = 'translateY(-2px)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.color = 'var(--navy-600)'
+                e.currentTarget.style.transform = 'translateY(0)'
+              }}
+            >
               🚗 Offer Ride
-            </Link>
+            </button>
           </div>
         </div>
 
         {/* Stats Cards */}
         <div style={{ 
           display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
           gap: '20px',
           marginBottom: '40px'
         }}>
-          {/* Total Rides Card */}
+          {/* Rides Offered Card */}
           <div style={{
             backgroundColor: 'var(--bg-secondary)',
             borderRadius: '16px',
@@ -105,6 +189,7 @@ const Dashboard = () => {
             transition: 'transform 0.2s, box-shadow 0.2s',
             cursor: 'pointer'
           }}
+          onClick={() => navigate('/my-rides')}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'translateY(-4px)'
             e.currentTarget.style.boxShadow = 'var(--shadow-luxury)'
@@ -135,7 +220,54 @@ const Dashboard = () => {
                 }}>
                   {stats.totalRides}
                 </div>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>Total Rides</div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>Rides Offered</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Bookings Made Card */}
+          <div style={{
+            backgroundColor: 'var(--bg-secondary)',
+            borderRadius: '16px',
+            padding: '24px',
+            boxShadow: 'var(--shadow-sm)',
+            border: '1px solid var(--border-color)',
+            borderTop: '4px solid #8b5cf6',
+            transition: 'transform 0.2s, box-shadow 0.2s',
+            cursor: 'pointer'
+          }}
+          onClick={() => navigate('/my-bookings')}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-4px)'
+            e.currentTarget.style.boxShadow = 'var(--shadow-luxury)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)'
+            e.currentTarget.style.boxShadow = 'var(--shadow-sm)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{
+                width: '56px',
+                height: '56px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '24px'
+              }}>
+                🎫
+              </div>
+              <div>
+                <div style={{ 
+                  fontSize: '32px', 
+                  fontWeight: 'bold',
+                  color: 'var(--text-primary)',
+                  fontFamily: 'var(--font-family-heading)'
+                }}>
+                  {stats.totalBookings}
+                </div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>Bookings Made</div>
               </div>
             </div>
           </div>
@@ -179,7 +311,7 @@ const Dashboard = () => {
                   color: 'var(--text-primary)',
                   fontFamily: 'var(--font-family-heading)'
                 }}>
-                  ₹{stats.totalSaved.toLocaleString()}
+                  ₹{stats.totalSaved}
                 </div>
                 <div style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>Money Saved</div>
               </div>
@@ -228,6 +360,53 @@ const Dashboard = () => {
                   {stats.co2Reduced} kg
                 </div>
                 <div style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>CO₂ Reduced</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Rating Card */}
+          <div style={{
+            backgroundColor: 'var(--bg-secondary)',
+            borderRadius: '16px',
+            padding: '24px',
+            boxShadow: 'var(--shadow-sm)',
+            border: '1px solid var(--border-color)',
+            borderTop: '4px solid #f59e0b',
+            transition: 'transform 0.2s, box-shadow 0.2s',
+            cursor: 'pointer'
+          }}
+          onClick={() => navigate('/profile')}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-4px)'
+            e.currentTarget.style.boxShadow = 'var(--shadow-luxury)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)'
+            e.currentTarget.style.boxShadow = 'var(--shadow-sm)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{
+                width: '56px',
+                height: '56px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '24px'
+              }}>
+                ⭐
+              </div>
+              <div>
+                <div style={{ 
+                  fontSize: '32px', 
+                  fontWeight: 'bold',
+                  color: 'var(--text-primary)',
+                  fontFamily: 'var(--font-family-heading)'
+                }}>
+                  {stats.averageRating > 0 ? stats.averageRating.toFixed(1) : 'N/A'}
+                </div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>Your Rating</div>
               </div>
             </div>
           </div>
@@ -331,6 +510,233 @@ const Dashboard = () => {
               <span style={{ fontSize: '20px' }}>💬</span>
               Messages
             </button>
+          </div>
+        </div>
+
+        {/* Two Column Layout for Recent Activity */}
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 400px), 1fr))',
+          gap: '24px',
+          marginBottom: '32px'
+        }}>
+          {/* My Recent Rides */}
+          <div style={{
+            backgroundColor: 'var(--bg-secondary)',
+            borderRadius: '16px',
+            padding: '24px',
+            boxShadow: 'var(--shadow-sm)',
+            border: '1px solid var(--border-color)'
+          }}>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              marginBottom: '20px'
+            }}>
+              <h3 style={{ 
+                fontSize: '20px', 
+                fontWeight: '600',
+                color: 'var(--text-primary)',
+                margin: 0
+              }}>
+                🚗 My Recent Rides
+              </h3>
+              <Link 
+                to="/my-rides" 
+                style={{ 
+                  color: 'var(--navy-600)', 
+                  fontWeight: '600',
+                  textDecoration: 'none',
+                  fontSize: '14px'
+                }}
+              >
+                View All →
+              </Link>
+            </div>
+            
+            {myRides.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {myRides.map(ride => (
+                  <div 
+                    key={ride._id}
+                    onClick={() => navigate(`/ride/${ride._id}`)}
+                    style={{
+                      padding: '16px',
+                      backgroundColor: 'var(--bg-primary)',
+                      borderRadius: '12px',
+                      border: '1px solid var(--border-color)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateX(4px)'
+                      e.currentTarget.style.borderColor = 'var(--navy-600)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateX(0)'
+                      e.currentTarget.style.borderColor = 'var(--border-color)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <div style={{ fontWeight: '600', color: 'var(--text-primary)', fontSize: '14px' }}>
+                        {ride.from} → {ride.to}
+                      </div>
+                      <div style={{ 
+                        fontSize: '12px',
+                        padding: '4px 8px',
+                        borderRadius: '6px',
+                        backgroundColor: ride.status === 'active' ? '#10b98120' : '#f59e0b20',
+                        color: ride.status === 'active' ? '#10b981' : '#f59e0b',
+                        fontWeight: '600'
+                      }}>
+                        {ride.status}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                      📅 {new Date(ride.date).toLocaleDateString()} • 
+                      🕐 {ride.time} • 
+                      💺 {ride.availableSeats} seats
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ 
+                textAlign: 'center', 
+                padding: '32px 16px',
+                color: 'var(--text-secondary)'
+              }}>
+                <div style={{ fontSize: '32px', marginBottom: '8px' }}>🚗</div>
+                <p style={{ margin: 0 }}>You haven't offered any rides yet</p>
+                <button 
+                  onClick={() => navigate('/provide')}
+                  style={{
+                    marginTop: '12px',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: 'linear-gradient(135deg, var(--navy-600), var(--navy-700))',
+                    color: 'white',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Offer Your First Ride
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* My Recent Bookings */}
+          <div style={{
+            backgroundColor: 'var(--bg-secondary)',
+            borderRadius: '16px',
+            padding: '24px',
+            boxShadow: 'var(--shadow-sm)',
+            border: '1px solid var(--border-color)'
+          }}>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              marginBottom: '20px'
+            }}>
+              <h3 style={{ 
+                fontSize: '20px', 
+                fontWeight: '600',
+                color: 'var(--text-primary)',
+                margin: 0
+              }}>
+                🎫 My Recent Bookings
+              </h3>
+              <Link 
+                to="/my-bookings" 
+                style={{ 
+                  color: 'var(--navy-600)', 
+                  fontWeight: '600',
+                  textDecoration: 'none',
+                  fontSize: '14px'
+                }}
+              >
+                View All →
+              </Link>
+            </div>
+            
+            {myBookings.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {myBookings.map(booking => (
+                  <div 
+                    key={booking._id}
+                    style={{
+                      padding: '16px',
+                      backgroundColor: 'var(--bg-primary)',
+                      borderRadius: '12px',
+                      border: '1px solid var(--border-color)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateX(4px)'
+                      e.currentTarget.style.borderColor = '#8b5cf6'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateX(0)'
+                      e.currentTarget.style.borderColor = 'var(--border-color)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <div style={{ fontWeight: '600', color: 'var(--text-primary)', fontSize: '14px' }}>
+                        {booking.rideId?.from} → {booking.rideId?.to}
+                      </div>
+                      <div style={{ 
+                        fontSize: '12px',
+                        padding: '4px 8px',
+                        borderRadius: '6px',
+                        backgroundColor: booking.status === 'confirmed' ? '#10b98120' : 
+                                       booking.status === 'pending' ? '#f59e0b20' : '#ef444420',
+                        color: booking.status === 'confirmed' ? '#10b981' : 
+                               booking.status === 'pending' ? '#f59e0b' : '#ef4444',
+                        fontWeight: '600'
+                      }}>
+                        {booking.status}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                      📅 {booking.rideId?.date ? new Date(booking.rideId.date).toLocaleDateString() : 'N/A'} • 
+                      🕐 {booking.rideId?.time || 'N/A'} • 
+                      💺 {booking.seats} seats
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ 
+                textAlign: 'center', 
+                padding: '32px 16px',
+                color: 'var(--text-secondary)'
+              }}>
+                <div style={{ fontSize: '32px', marginBottom: '8px' }}>🎫</div>
+                <p style={{ margin: 0 }}>You haven't booked any rides yet</p>
+                <button 
+                  onClick={() => navigate('/search')}
+                  style={{
+                    marginTop: '12px',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+                    color: 'white',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Find Your First Ride
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

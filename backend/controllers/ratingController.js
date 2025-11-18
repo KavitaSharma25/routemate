@@ -3,7 +3,10 @@ const Ride = require('../models/Ride');
 const User = require('../models/User');
 const mongoose = require('mongoose');
 
-// Submit a rating for a completed ride
+/**
+ * Submit a rating for a completed ride
+ * Allows passengers or providers to rate each other after ride completion
+ */
 exports.submitRating = async (req, res) => {
   try {
     const { rideId } = req.params;
@@ -60,7 +63,10 @@ exports.submitRating = async (req, res) => {
   }
 };
 
-// Get ratings for a user
+/**
+ * Get all ratings for a specific user
+ * Returns paginated ratings with average rating calculation
+ */
 exports.getUserRatings = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -92,7 +98,10 @@ exports.getUserRatings = async (req, res) => {
   }
 };
 
-// Get ratings for a specific ride
+/**
+ * Get all ratings for a specific ride
+ * Returns ratings with user information for both rater and rated user
+ */
 exports.getRideRatings = async (req, res) => {
   try {
     const { rideId } = req.params;
@@ -109,7 +118,10 @@ exports.getRideRatings = async (req, res) => {
   }
 };
 
-// Helper function to update user's average rating
+/**
+ * Helper function to update user's average rating
+ * Recalculates and updates user's average rating based on all ratings
+ */
 async function updateUserAverageRating(userId) {
   try {
     const result = await Rating.aggregate([

@@ -3,6 +3,10 @@ const User = require('../models/User');
 const Notification = require('../models/Notification');
 const sendEmail = require('../utils/sendEmail');
 
+/**
+ * Create a new ride offering
+ * Provider creates a ride with route, date, seats, and price details
+ */
 exports.createRide = async (req, res) => {
   try {
     const { from, to, route, date, seatsAvailable, price } = req.body;
@@ -15,6 +19,10 @@ exports.createRide = async (req, res) => {
   }
 };
 
+/**
+ * Search for available rides
+ * Filters rides by destination, origin, date, and available seats
+ */
 exports.searchRides = async (req, res) => {
   try {
     const { to, from, date, seats } = req.query;
@@ -32,6 +40,10 @@ exports.searchRides = async (req, res) => {
   }
 };
 
+/**
+ * Book a seat on a ride
+ * Creates pending booking request and notifies provider
+ */
 exports.bookRide = async (req, res) => {
   try {
     const { rideId } = req.params;
@@ -70,7 +82,10 @@ exports.bookRide = async (req, res) => {
   }
 };
 
-// Provider confirms a booking; returns a Razorpay order if payment required
+/**
+ * Provider confirms a booking request
+ * Creates Razorpay payment order if ride has a price, otherwise confirms immediately
+ */
 exports.confirmBooking = async (req, res) => {
   try {
     const { rideId, bookingId } = req.params;
@@ -206,6 +221,10 @@ exports.confirmBooking = async (req, res) => {
   }
 };
 
+/**
+ * Provider declines a booking request
+ * Updates booking status and notifies the requester
+ */
 exports.declineBooking = async (req, res) => {
   try {
     const { rideId, bookingId } = req.params;
@@ -238,6 +257,10 @@ exports.declineBooking = async (req, res) => {
   }
 };
 
+/**
+ * Cancel a ride or booking
+ * Provider can cancel entire ride, passenger can cancel their booking
+ */
 exports.cancelRide = async (req, res) => {
   try {
     const { rideId } = req.params;
@@ -308,6 +331,10 @@ exports.cancelRide = async (req, res) => {
   }
 };
 
+/**
+ * Get user's ride history
+ * Returns rides where user was provider or passenger
+ */
 exports.getRideHistory = async (req, res) => {
   try {
     const asProvider = await Ride.find({ provider: req.user.id });
@@ -319,6 +346,10 @@ exports.getRideHistory = async (req, res) => {
   }
 };
 
+/**
+ * Get detailed ride information by ID
+ * Returns ride with populated provider details
+ */
 exports.getRideById = async (req, res) => {
   try {
     const { rideId } = req.params
@@ -331,6 +362,10 @@ exports.getRideById = async (req, res) => {
   }
 }
 
+/**
+ * Report a ride for violations
+ * Adds report with reason to ride's report list
+ */
 exports.reportRide = async (req, res) => {
   try {
     const { rideId } = req.params;
@@ -346,6 +381,10 @@ exports.reportRide = async (req, res) => {
   }
 };
 
+/**
+ * Update ride details
+ * Provider can update ride info if no confirmed bookings exist
+ */
 exports.updateRide = async (req, res) => {
   try {
     const { rideId } = req.params;
@@ -380,6 +419,10 @@ exports.updateRide = async (req, res) => {
   }
 };
 
+/**
+ * Delete a ride
+ * Provider can delete ride if no confirmed bookings exist
+ */
 exports.deleteRide = async (req, res) => {
   try {
     const { rideId } = req.params;
@@ -411,6 +454,10 @@ exports.deleteRide = async (req, res) => {
   }
 };
 
+/**
+ * Get all rides created by current user
+ * Returns rides with booking information where user is the provider
+ */
 exports.getMyRides = async (req, res) => {
   try {
     const rides = await Ride.find({ provider: req.user.id })
@@ -423,6 +470,10 @@ exports.getMyRides = async (req, res) => {
   }
 };
 
+/**
+ * Get all bookings made by current user
+ * Returns rides where user has made a booking with booking details
+ */
 exports.getMyBookings = async (req, res) => {
   try {
     // Find all rides where user has a booking
@@ -439,6 +490,7 @@ exports.getMyBookings = async (req, res) => {
         to: ride.to,
         date: ride.date,
         price: ride.price,
+        providerId: ride.provider._id,
         provider: ride.provider,
         booking: userBooking,
         route: ride.route
@@ -448,6 +500,86 @@ exports.getMyBookings = async (req, res) => {
     res.json(bookingsWithRides);
   } catch (error) {
     console.error('Error fetching bookings:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+/**
+ * Mark ride as completed
+ * Both provider and passenger must confirm completion for ride to be marked complete
+ */
+exports.markRideComplete = async (req, res) => {
+  try {
+    const { rideId, bookingId } = req.params;
+    const ride = await Ride.findById(rideId).populate('provider', 'name email').populate('bookings.user', 'name email');
+    
+    if (!ride) return res.status(404).json({ message: 'Ride not found' });
+    
+    const booking = ride.bookings.id(bookingId);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    
+    if (booking.status !== 'confirmed') {
+      return res.status(400).json({ message: 'Only confirmed bookings can be marked as complete' });
+    }
+    
+    const userId = req.user.id.toString();
+    const isProvider = ride.provider._id.toString() === userId;
+    const isBookingUser = booking.user._id.toString() === userId;
+    
+    if (!isProvider && !isBookingUser) {
+      return res.status(403).json({ message: 'You are not authorized to mark this ride as complete' });
+    }
+    
+    // Mark completion based on who is confirming
+    if (isProvider) {
+      booking.completedByProvider = true;
+    } else if (isBookingUser) {
+      booking.completedByUser = true;
+    }
+    
+    // If both have confirmed completion, mark the ride as completed
+    if (booking.completedByProvider && booking.completedByUser) {
+      ride.status = 'completed';
+      
+      // Send notification to both parties
+      try {
+        const providerNotif = new Notification({
+          user: ride.provider._id,
+          type: 'ride_completed',
+          message: `Ride to ${ride.to} has been completed successfully!`,
+          metadata: { ride: ride._id }
+        });
+        await providerNotif.save();
+        
+        const userNotif = new Notification({
+          user: booking.user._id,
+          type: 'ride_completed',
+          message: `Ride to ${ride.to} has been completed successfully!`,
+          metadata: { ride: ride._id }
+        });
+        await userNotif.save();
+      } catch (err) {
+        console.error('Error creating completion notifications:', err);
+      }
+    }
+    
+    await ride.save();
+    
+    const responseMessage = booking.completedByProvider && booking.completedByUser
+      ? 'Ride marked as completed by both parties!'
+      : isProvider
+      ? 'You have marked this ride as complete. Waiting for passenger confirmation.'
+      : 'You have marked this ride as complete. Waiting for provider confirmation.';
+    
+    res.json({ 
+      message: responseMessage, 
+      booking,
+      rideCompleted: ride.status === 'completed',
+      completedByProvider: booking.completedByProvider,
+      completedByUser: booking.completedByUser
+    });
+  } catch (error) {
+    console.error('Error marking ride complete:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };

@@ -10,6 +10,10 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+/**
+ * Send email using nodemailer
+ * Sends email with specified recipient, subject, and HTML/text content
+ */
 async function sendEmail({ to, subject, html, text }) {
   const info = await transporter.sendMail({
     from: process.env.SMTP_USER,

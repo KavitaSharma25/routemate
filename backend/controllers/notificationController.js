@@ -1,5 +1,9 @@
 const Notification = require('../models/Notification');
 
+/**
+ * Get all notifications for current user
+ * Returns user's notifications sorted by creation date
+ */
 exports.getNotifications = async (req, res) => {
   try {
     const notes = await Notification.find({ user: req.user.id }).sort('-createdAt');
@@ -10,6 +14,10 @@ exports.getNotifications = async (req, res) => {
   }
 };
 
+/**
+ * Mark a notification as read
+ * Updates notification read status by ID
+ */
 exports.markRead = async (req, res) => {
   try {
     const { id } = req.params;

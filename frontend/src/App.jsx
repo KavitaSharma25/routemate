@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import Home from './pages/Home'
 import Intro from './pages/Intro'
 import Login from './pages/Login'
@@ -26,6 +26,7 @@ import './styles/page-transitions.css'
 export default function App(){
   const [isLoading, setIsLoading] = useState(true)
   const [showContent, setShowContent] = useState(false)
+  const location = useLocation()
 
   // Check if user has seen the loading animation in this session
   useEffect(() => {
@@ -62,8 +63,8 @@ export default function App(){
           transition: 'opacity 0.5s ease-in-out'
         }}
       >
-        <Navbar />
-        <main className="p-4">
+        {location.pathname !== '/' && <Navbar />}
+        <main className={location.pathname !== '/' ? 'p-4' : ''} style={location.pathname !== '/' ? { paddingTop: '90px' } : {}}>
         <Routes>
           <Route path="/intro" element={<Intro/>} />
           <Route path="/" element={<Home/>} />

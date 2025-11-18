@@ -1,6 +1,10 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+/**
+ * Protect middleware for authenticated routes
+ * Verifies JWT token and attaches user to request object
+ */
 exports.protect = async (req, res, next) => {
   let token = null;
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
@@ -23,7 +27,10 @@ exports.protect = async (req, res, next) => {
   }
 };
 
-// optional middleware (allows access but attaches user if token present)
+/**
+ * Optional authentication middleware
+ * Allows access without token but attaches user if valid token is present
+ */
 exports.optional = async (req, res, next) => {
   let token = null;
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {

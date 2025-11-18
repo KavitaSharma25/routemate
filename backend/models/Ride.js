@@ -22,7 +22,9 @@ const rideSchema = new mongoose.Schema({
         paymentId: String,
         signature: String,
         paid: { type: Boolean, default: false }
-      }
+      },
+      completedByUser: { type: Boolean, default: false },
+      completedByProvider: { type: Boolean, default: false }
     }
   ],
   reports: [{ reporter: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, reason: String }],

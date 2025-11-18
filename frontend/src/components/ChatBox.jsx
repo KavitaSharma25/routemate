@@ -21,6 +21,7 @@ export default function ChatBox({room, userId}){
     e.preventDefault()
     if (!text) return
     const payload = { room, message: text, from: userId, createdAt: new Date() }
+    console.log('Sending message:', payload)
     sendMessage(payload)
     setText('')
   }
@@ -41,16 +42,22 @@ export default function ChatBox({room, userId}){
         ))}
       </div>
       <div className="h-64 overflow-auto p-2 mb-2 rounded" style={{ border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
-        {messages.filter(m=>m.room === room).map((m,idx)=> (
-          <div 
-            key={idx} 
-            className={`p-2 mb-1 rounded max-w-[80%] ${String(m.from)===String(userId)? 'ml-auto text-right':'mr-auto'}`}
-            style={{ backgroundColor: String(m.from)===String(userId) ? 'var(--mahogany)' : 'var(--tobacco)', color: 'var(--vanilla)' }}
-          > 
-            <div className="text-sm">{m.message}</div>
-            <div className="text-xs" style={{ opacity: 0.8 }}>{new Date(m.createdAt).toLocaleTimeString()}</div>
-          </div>
-        ))}
+        {messages.filter(m=>m.room === room).map((m,idx)=> {
+          const isMyMessage = String(m.from) === String(userId) || String(m.from?._id) === String(userId)
+          return (
+            <div 
+              key={m._id || idx} 
+              className={`p-2 mb-1 rounded max-w-[80%] ${isMyMessage ? 'ml-auto text-right':'mr-auto'}`}
+              style={{ backgroundColor: isMyMessage ? 'var(--mahogany)' : 'var(--tobacco)', color: 'var(--vanilla)' }}
+            > 
+              {!isMyMessage && m.fromName && (
+                <div className="text-xs font-semibold mb-1" style={{ opacity: 0.9 }}>{m.fromName}</div>
+              )}
+              <div className="text-sm">{m.message}</div>
+              <div className="text-xs" style={{ opacity: 0.8 }}>{new Date(m.createdAt).toLocaleTimeString()}</div>
+            </div>
+          )
+        })}
       </div>
       <form onSubmit={submit} className="flex gap-2">
         <input 

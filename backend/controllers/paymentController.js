@@ -1,6 +1,10 @@
 const Razorpay = require('razorpay');
 const { verifySignature } = require('../utils/razorpayUtils')
 
+/**
+ * Create a Razorpay payment order
+ * Initializes payment order with amount and currency for checkout
+ */
 exports.createOrder = async (req, res) => {
   try {
     // ensure keys are present
@@ -27,6 +31,10 @@ exports.createOrder = async (req, res) => {
   }
 };
 
+/**
+ * Verify Razorpay payment signature
+ * Validates payment, confirms booking, and notifies both parties
+ */
 exports.verifyPayment = async (req, res) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;

@@ -1,6 +1,10 @@
 const User = require('../models/User');
 const Ride = require('../models/Ride');
 
+/**
+ * Get all drivers pending verification
+ * Returns list of users who are drivers but not yet verified
+ */
 exports.getPendingDrivers = async (req, res) => {
   try {
     const pending = await User.find({ isDriver: true, driverVerified: false }).select('name email driverIdImage role');
@@ -11,6 +15,10 @@ exports.getPendingDrivers = async (req, res) => {
   }
 };
 
+/**
+ * Verify a driver's account
+ * Admin approves driver and sets verified status to true
+ */
 exports.verifyDriver = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -25,6 +33,10 @@ exports.verifyDriver = async (req, res) => {
   }
 };
 
+/**
+ * Reject a driver verification request
+ * Removes driver status and clears verification data
+ */
 exports.rejectDriver = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -41,6 +53,10 @@ exports.rejectDriver = async (req, res) => {
   }
 };
 
+/**
+ * Promote a user to admin role
+ * Grants admin privileges to specified user
+ */
 exports.promoteUser = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -55,6 +71,10 @@ exports.promoteUser = async (req, res) => {
   }
 };
 
+/**
+ * Get all users in the system
+ * Returns list of users (max 100) sorted by creation date
+ */
 exports.getAllUsers = async (req, res) => {
   try {
     const users = await User.find()
@@ -68,6 +88,10 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
+/**
+ * Get all rides in the system
+ * Returns list of rides (max 100) with provider details
+ */
 exports.getAllRides = async (req, res) => {
   try {
     const rides = await Ride.find()
@@ -81,6 +105,10 @@ exports.getAllRides = async (req, res) => {
   }
 };
 
+/**
+ * Get platform statistics
+ * Returns counts of users, rides, bookings, and driver verifications
+ */
 exports.getStats = async (req, res) => {
   try {
     const totalUsers = await User.countDocuments();

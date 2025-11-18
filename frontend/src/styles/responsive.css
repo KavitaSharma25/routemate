@@ -267,3 +267,42 @@ textarea:focus-visible {
   left: 0;
   top: 0;
 }
+
+/* Home Page Responsive Styles */
+@media (max-width: 767px) {
+  /* Make hero section more compact on mobile */
+  section[style*="minHeight: '100vh'"] {
+    min-height: auto !important;
+    padding: 60px 16px 40px !important;
+  }
+  
+  /* Stack grid items vertically on mobile */
+  div[style*="gridTemplateColumns: 'repeat(auto-fit"] {
+    grid-template-columns: 1fr !important;
+  }
+  
+  /* Adjust button sizes on mobile */
+  a[style*="padding: '14px 32px'"] {
+    padding: 12px 24px !important;
+    font-size: 0.95rem !important;
+  }
+  
+  /* Make stats horizontal scroll on very small screens */
+  div[style*="gap: '32px'"][style*="marginTop: '32px'"] {
+    gap: 20px !important;
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 479px) {
+  /* Extra small screens adjustments */
+  h1[style*="fontSize: 'clamp"] {
+    font-size: 1.75rem !important;
+  }
+  
+  /* Adjust navigation on tiny screens */
+  div[style*="justifyContent: 'flex-end'"] a {
+    padding: 8px 16px !important;
+    font-size: 0.8rem !important;
+  }
+}

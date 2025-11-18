@@ -3,6 +3,10 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const path = require('path');
 
+/**
+ * Register a new user with Chitkara college email
+ * Validates email domain, hashes password, and creates user account
+ */
 exports.register = async (req, res) => {
   try {
     const { name, email, password, role, isDriver } = req.body;
@@ -29,6 +33,10 @@ exports.register = async (req, res) => {
   }
 };
 
+/**
+ * Authenticate user and generate JWT token
+ * Validates credentials and returns token with user info
+ */
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -46,6 +54,10 @@ exports.login = async (req, res) => {
   }
 };
 
+/**
+ * Get authenticated user's profile information
+ * Returns user data excluding password
+ */
 exports.getProfile = async (req, res) => {
   try {
     if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
@@ -58,6 +70,10 @@ exports.getProfile = async (req, res) => {
   }
 };
 
+/**
+ * Upload driver ID image for verification
+ * Stores image path and sets verification status to pending
+ */
 exports.uploadDriverId = async (req, res) => {
   try {
     if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
@@ -76,6 +92,10 @@ exports.uploadDriverId = async (req, res) => {
   }
 };
 
+/**
+ * Update user profile information
+ * Allows updating name, phone, bio, and vehicle information
+ */
 exports.updateProfile = async (req, res) => {
   try {
     if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
@@ -98,6 +118,10 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
+/**
+ * Change user password
+ * Verifies current password, validates new password, and updates securely
+ */
 exports.changePassword = async (req, res) => {
   try {
     if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
@@ -132,6 +156,10 @@ exports.changePassword = async (req, res) => {
   }
 };
 
+/**
+ * Upload user profile photo
+ * Saves uploaded image and updates user's profile photo path
+ */
 exports.uploadProfilePhoto = async (req, res) => {
   try {
     if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
@@ -149,6 +177,10 @@ exports.uploadProfilePhoto = async (req, res) => {
   }
 };
 
+/**
+ * Get public profile information for any user
+ * Returns user data excluding password by user ID
+ */
 exports.getPublicProfile = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -163,5 +195,70 @@ exports.getPublicProfile = async (req, res) => {
   } catch (error) {
     console.error('Get public profile error:', error);
     res.status(500).json({ message: 'Server error fetching profile' });
+  }
+};
+
+/**
+ * Rate another user
+ * Allows users to rate others with score (1-5) and optional comment
+ */
+exports.rateUser = async (req, res) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
+
+    const { userId, score, comment } = req.body;
+    console.log('Rating request:', { userId, score, comment, raterId: req.user.id });
+
+    if (!userId || !score) {
+      return res.status(400).json({ message: 'User ID and score are required' });
+    }
+
+    if (score < 1 || score > 5) {
+      return res.status(400).json({ message: 'Score must be between 1 and 5' });
+    }
+
+    // Don't allow rating yourself
+    if (userId === req.user.id) {
+      return res.status(400).json({ message: 'You cannot rate yourself' });
+    }
+
+    const userToRate = await User.findById(userId);
+    if (!userToRate) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if user already rated this person
+    const existingRating = userToRate.ratings.find(
+      r => r.rater.toString() === req.user.id.toString()
+    );
+
+    if (existingRating) {
+      // Update existing rating
+      existingRating.score = score;
+      existingRating.comment = comment || '';
+    } else {
+      // Add new rating
+      userToRate.ratings.push({
+        rater: req.user.id,
+        score,
+        comment: comment || ''
+      });
+    }
+
+    // Recalculate average rating
+    const totalScore = userToRate.ratings.reduce((sum, r) => sum + r.score, 0);
+    userToRate.averageRating = totalScore / userToRate.ratings.length;
+    userToRate.totalRatings = userToRate.ratings.length;
+
+    await userToRate.save();
+
+    res.json({ 
+      message: 'Rating submitted successfully',
+      averageRating: userToRate.averageRating,
+      totalRatings: userToRate.totalRatings
+    });
+  } catch (error) {
+    console.error('Rate user error:', error);
+    res.status(500).json({ message: 'Server error submitting rating' });
   }
 };
