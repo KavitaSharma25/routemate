@@ -272,20 +272,20 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Money Saved Card */}
+          {/* Total Earnings Card */}
           <div style={{
             backgroundColor: 'var(--bg-secondary)',
             borderRadius: '16px',
             padding: '24px',
             boxShadow: 'var(--shadow-sm)',
             border: '1px solid var(--border-color)',
-            borderTop: '4px solid var(--gold-accent)',
+            borderTop: '4px solid #d4af37',
             transition: 'transform 0.2s, box-shadow 0.2s',
             cursor: 'pointer'
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'translateY(-4px)'
-            e.currentTarget.style.boxShadow = 'var(--shadow-luxury)'
+            e.currentTarget.style.boxShadow = '0 20px 40px rgba(212, 175, 55, 0.3)'
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = 'translateY(0)'
@@ -296,11 +296,12 @@ const Dashboard = () => {
                 width: '56px',
                 height: '56px',
                 borderRadius: '12px',
-                background: 'linear-gradient(135deg, var(--gold-accent), #b8935f)',
+                background: 'linear-gradient(135deg, #d4af37, #c9a240)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '24px'
+                fontSize: '24px',
+                boxShadow: '0 4px 12px rgba(212, 175, 55, 0.4)'
               }}>
                 💰
               </div>
@@ -313,7 +314,7 @@ const Dashboard = () => {
                 }}>
                   ₹{stats.totalSaved}
                 </div>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>Money Saved</div>
+                <div style={{ color: '#100f0fff', fontSize: '14px', fontWeight: '600' }}>Money Saved</div>
               </div>
             </div>
           </div>
@@ -820,4 +821,4 @@ const Dashboard = () => {
   )
 }
 
-export default Dashboard
+export default Dashboard 

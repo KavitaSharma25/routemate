@@ -17,7 +17,24 @@ export default function MapComponent({ apiKey, onRouteSelected, liveLocation }){
   const mapDivRef = useRef(null)
   const [fromText, setFromText] = useState('')
   const [toText, setToText] = useState('')
+  const [useManualEntry, setUseManualEntry] = useState(true) // Default to manual entry
   const markerRef = useRef(null)
+
+  // Toggle between manual and Google Maps mode
+  const handleModeToggle = () => {
+    setUseManualEntry(!useManualEntry)
+  }
+
+  // Manual route submission
+  const handleManualSubmit = () => {
+    if (fromText && toText) {
+      onRouteSelected && onRouteSelected({ 
+        from: fromText, 
+        to: toText, 
+        route: null // No Google Maps route data
+      })
+    }
+  }
 
   useEffect(()=>{
     if (!apiKey || apiKey === 'your_google_maps_api_key_here') {
@@ -108,63 +125,132 @@ export default function MapComponent({ apiKey, onRouteSelected, liveLocation }){
     }
   },[liveLocation])
 
-  // Show fallback UI if no API key is configured
-  if (!apiKey || apiKey === 'your_google_maps_api_key_here') {
+  // Show fallback UI if no API key is configured OR manual mode is selected
+  if (!apiKey || apiKey === 'your_google_maps_api_key_here' || useManualEntry) {
     return (
-      <div className="space-y-2">
+      <div className="space-y-3">
+        {/* Mode Toggle */}
+        {apiKey && apiKey !== 'your_google_maps_api_key_here' && (
+          <div className="flex justify-end">
+            <button
+              onClick={handleModeToggle}
+              className="text-sm px-4 py-2 rounded-lg font-medium transition-all hover:opacity-80"
+              style={{
+                backgroundColor: 'var(--accent-gold)',
+                color: 'white'
+              }}
+            >
+              {useManualEntry ? '🗺️ Switch to Google Maps' : '✍️ Enter Manually'}
+            </button>
+          </div>
+        )}
+
         <div className="flex gap-2">
           <input 
             value={fromText} 
             onChange={e=>setFromText(e.target.value)} 
-            placeholder="From" 
-            className="flex-1 p-2 rounded" 
-            style={{ border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+            placeholder="From (e.g., Chitkara University)" 
+            className="flex-1 p-3 rounded-lg" 
+            style={{ 
+              border: '2px solid var(--border-color)', 
+              backgroundColor: 'var(--bg-secondary)', 
+              color: 'var(--text-primary)',
+              fontSize: '15px'
+            }}
+            onKeyPress={(e) => e.key === 'Enter' && handleManualSubmit()}
           />
           <input 
             value={toText} 
             onChange={e=>setToText(e.target.value)} 
-            placeholder="To" 
-            className="flex-1 p-2 rounded" 
-            style={{ border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+            placeholder="To (e.g., ABC Road)" 
+            className="flex-1 p-3 rounded-lg" 
+            style={{ 
+              border: '2px solid var(--border-color)', 
+              backgroundColor: 'var(--bg-secondary)', 
+              color: 'var(--text-primary)',
+              fontSize: '15px'
+            }}
+            onKeyPress={(e) => e.key === 'Enter' && handleManualSubmit()}
           />
         </div>
-        <div className="flex items-center justify-center h-80 rounded" style={{ backgroundColor: 'var(--bg-secondary)', border: '2px dashed var(--border-color)' }}>
-          <div className="text-center p-6">
-            <div className="text-4xl mb-4">🗺️</div>
-            <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Google Maps Not Configured</h3>
-            <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
-              To enable map features, please configure your Google Maps API key in the .env file
-            </p>
-            <div className="p-3 rounded text-xs text-left" style={{ backgroundColor: 'var(--bg-primary)' }}>
-              <code style={{ color: 'var(--text-secondary)' }}>VITE_GOOGLE_MAPS_API_KEY=your_api_key_here</code>
+
+        <button
+          onClick={handleManualSubmit}
+          disabled={!fromText || !toText}
+          className="w-full py-3 rounded-lg font-semibold transition-all hover:opacity-90 disabled:opacity-50"
+          style={{
+            backgroundColor: fromText && toText ? 'var(--accent-gold)' : '#ccc',
+            color: 'white',
+            cursor: fromText && toText ? 'pointer' : 'not-allowed'
+          }}
+        >
+          Continue with Manual Entry
+        </button>
+
+        {(!apiKey || apiKey === 'your_google_maps_api_key_here') && (
+          <div className="flex items-center justify-center p-6 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary)', border: '2px dashed var(--border-color)' }}>
+            <div className="text-center">
+              <div className="text-4xl mb-3">🗺️</div>
+              <h3 className="text-base font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Google Maps Not Available</h3>
+              <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>
+                Using manual entry mode. To enable Google Maps autocomplete and routing, add your API key to .env
+              </p>
+              <div className="p-3 rounded text-xs text-left inline-block" style={{ backgroundColor: 'var(--bg-primary)' }}>
+                <code style={{ color: 'var(--text-secondary)' }}>VITE_GOOGLE_MAPS_API_KEY=your_api_key_here</code>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     )
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
+      {/* Mode Toggle Button */}
+      <div className="flex justify-end">
+        <button
+          onClick={handleModeToggle}
+          className="text-sm px-4 py-2 rounded-lg font-medium transition-all hover:opacity-80"
+          style={{
+            backgroundColor: 'var(--bg-secondary)',
+            color: 'var(--text-primary)',
+            border: '1px solid var(--border-color)'
+          }}
+        >
+          ✍️ Switch to Manual Entry
+        </button>
+      </div>
+
       <div className="flex gap-2">
         <input 
           id="rm-from" 
           value={fromText} 
           onChange={e=>setFromText(e.target.value)} 
-          placeholder="From" 
-          className="flex-1 p-2 rounded" 
-          style={{ border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+          placeholder="From (start typing...)" 
+          className="flex-1 p-3 rounded-lg" 
+          style={{ 
+            border: '2px solid var(--border-color)', 
+            backgroundColor: 'var(--bg-secondary)', 
+            color: 'var(--text-primary)',
+            fontSize: '15px'
+          }}
         />
         <input 
           id="rm-to" 
           value={toText} 
           onChange={e=>setToText(e.target.value)} 
-          placeholder="To" 
-          className="flex-1 p-2 rounded" 
-          style={{ border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+          placeholder="To (start typing...)" 
+          className="flex-1 p-3 rounded-lg" 
+          style={{ 
+            border: '2px solid var(--border-color)', 
+            backgroundColor: 'var(--bg-secondary)', 
+            color: 'var(--text-primary)',
+            fontSize: '15px'
+          }}
         />
       </div>
-      <div ref={mapDivRef} style={{ height: 320 }} className="rounded overflow-hidden" />
+      <div ref={mapDivRef} style={{ height: 320 }} className="rounded-lg overflow-hidden shadow-md" />
     </div>
   )
 }

@@ -19,6 +19,7 @@ import Navbar from './components/Navbar'
 import ProtectedRoute from './components/ProtectedRoute'
 import LoadingScreen from './components/LoadingScreen'
 import NotificationToast from './components/NotificationToast'
+import ConfirmDialog from './components/ConfirmDialog'
 import './styles/theme.css'
 import './styles/animations.css'
 import './styles/page-transitions.css'
@@ -53,6 +54,7 @@ export default function App(){
     <>
       {isLoading && <LoadingScreen onComplete={handleLoadingComplete} />}
       <NotificationToast />
+      <ConfirmDialog />
       
       <div 
         className="min-h-screen page-transition" 

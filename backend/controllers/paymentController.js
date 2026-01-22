@@ -41,27 +41,33 @@ exports.verifyPayment = async (req, res) => {
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
     if (!keySecret) return res.status(503).json({ message: 'Razorpay secret not configured on server' });
 
+  // Verify payment signature using HMAC SHA256
   const ok = verifySignature(razorpay_order_id, razorpay_payment_id, razorpay_signature, keySecret)
+  
   if (ok) {
-      // Payment verified successfully. Update booking status
+      // Payment signature is valid - proceed with booking confirmation
       const Ride = require('../models/Ride');
       const User = require('../models/User');
       const Notification = require('../models/Notification');
       const sendEmail = require('../utils/sendEmail');
 
+      // Find ride containing this payment order
       const ride = await Ride.findOne({ 'bookings.payment.orderId': razorpay_order_id });
       if (!ride) return res.status(404).json({ success: false, message: 'Associated ride/booking not found' });
 
+      // Find specific booking within the ride
       const booking = ride.bookings.find(b => b.payment && b.payment.orderId === razorpay_order_id);
       if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
 
+      // Update payment details with Razorpay response
       booking.payment.paymentId = razorpay_payment_id;
       booking.payment.signature = razorpay_signature;
-      booking.payment.paid = true;
-      booking.status = 'confirmed';
+      booking.payment.paid = true; // Mark payment as completed
+      booking.status = 'confirmed'; // Confirm the booking
 
-      // push confirmed passenger and decrement seat
+      // Add user to confirmed passengers list
       ride.passengers.push(booking.user);
+      // Decrement available seats (ensure non-negative)
       ride.seatsAvailable = Math.max(0, ride.seatsAvailable - 1);
       await ride.save();
 

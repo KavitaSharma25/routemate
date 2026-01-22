@@ -3,7 +3,9 @@ import axios from 'axios'
 import RideCard from '../components/RideCard'
 import { useAuth } from '../context/AuthContext'
 import RazorpayCheckout from '../components/RazorpayCheckout'
+import BookingWizard from '../components/BookingWizard'
 import { useNavigate } from 'react-router-dom'
+import { useNotification } from '../components/NotificationToast'
 
 export default function RideSearch(){
   const [rides,setRides]=useState([])
@@ -17,6 +19,9 @@ export default function RideSearch(){
     minSeats: ''
   })
   const auth = useAuth()
+  const { showNotification } = useNotification()
+  const [showBookingWizard, setShowBookingWizard] = useState(false)
+  const [selectedRide, setSelectedRide] = useState(null)
 
   const fetch = async () => {
     setLoading(true)
@@ -67,16 +72,35 @@ export default function RideSearch(){
   const onBook = async (ride) => {
     const token = auth?.token || localStorage.getItem('token')
     if (!token) return nav('/login')
+    setSelectedRide(ride)
+    setShowBookingWizard(true)
+  }
+
+  const handleBookingComplete = async (bookingData) => {
+    const token = auth?.token || localStorage.getItem('token')
     try{
-      const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/rides/${ride._id}/book`,{}, { headers: { Authorization: `Bearer ${token}` } })
+      const res = await axios.post(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/rides/${selectedRide._id}/book`,
+        { seats: bookingData.seats },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
       // if backend responds with order and keyId, open checkout
       if (res.data.order && res.data.keyId) {
-        setPendingPayment({ order: res.data.order, keyId: res.data.keyId, ride, bookingId: res.data.bookingId })
+        setPendingPayment({ 
+          order: res.data.order, 
+          keyId: res.data.keyId, 
+          ride: selectedRide, 
+          bookingId: res.data.bookingId,
+          seats: bookingData.seats 
+        })
+        setShowBookingWizard(false)
         return
       }
-      alert(res.data.message || 'Booking created')
+      showNotification(res.data.message || 'Booking created', 'success')
+      setShowBookingWizard(false)
+      fetch() // Refresh rides
     }catch(err){
-      alert(err.response?.data?.message || 'Booking failed')
+      showNotification(err.response?.data?.message || 'Booking failed', 'error')
     }
   }
 
@@ -88,12 +112,12 @@ export default function RideSearch(){
       if (pendingPayment && pendingPayment.ride) body.rideId = pendingPayment.ride._id
       if (pendingPayment && pendingPayment.bookingId) body.bookingId = pendingPayment.bookingId
       const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/payments/verify`, body, { headers: { Authorization: `Bearer ${token}` } })
-      alert(res.data.message || 'Payment verified and booking confirmed')
+      showNotification(res.data.message || 'Payment verified and booking confirmed', 'success')
       setPendingPayment(null)
       fetch()
     }catch(err){
       console.error(err)
-      alert(err.response?.data?.message || 'Payment verification failed')
+      showNotification(err.response?.data?.message || 'Payment verification failed', 'error')
     }
   }
 
@@ -378,12 +402,19 @@ export default function RideSearch(){
                   {pendingPayment.ride.from} → {pendingPayment.ride.to}
                 </p>
                 <p style={{ 
+                  fontSize: '14px',
+                  color: 'var(--text-secondary)',
+                  marginBottom: '12px'
+                }}>
+                  {pendingPayment.seats || 1} seat(s) × ₹{pendingPayment.ride.price}
+                </p>
+                <p style={{ 
                   fontSize: '28px',
                   fontWeight: 'bold',
                   color: 'var(--navy-600)',
                   fontFamily: 'var(--font-family-heading)'
                 }}>
-                  ₹{pendingPayment.ride.price}
+                  ₹{pendingPayment.ride.price * (pendingPayment.seats || 1)}
                 </p>
               </div>
               <RazorpayCheckout 
@@ -391,7 +422,10 @@ export default function RideSearch(){
                 keyId={pendingPayment.keyId} 
                 prefill={{name: pendingPayment.ride.providerName}} 
                 onSuccess={onPaymentSuccess} 
-                onError={(e)=>{alert('Checkout failed'); console.error(e)}} 
+                onError={(e)=>{
+                  showNotification('Checkout failed', 'error')
+                  console.error(e)
+                }} 
               />
               <button 
                 onClick={()=>setPendingPayment(null)}
@@ -411,6 +445,18 @@ export default function RideSearch(){
               </button>
             </div>
           </div>
+        )}
+        
+        {/* Booking Wizard Modal */}
+        {showBookingWizard && selectedRide && (
+          <BookingWizard
+            ride={selectedRide}
+            onComplete={handleBookingComplete}
+            onCancel={() => {
+              setShowBookingWizard(false)
+              setSelectedRide(null)
+            }}
+          />
         )}
       </div>
       

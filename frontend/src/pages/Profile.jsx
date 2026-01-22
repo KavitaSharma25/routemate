@@ -26,12 +26,15 @@ export default function Profile(){
       const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/profile`, {
         headers: { Authorization: 'Bearer ' + token }
       })
+      console.log('Profile data received:', res.data)
+      console.log('Driver ID Image path:', res.data.driverIdImage)
       setProfile(res.data)
       setEditData({
         name: res.data.name || '',
         phone: res.data.phone || '',
         bio: res.data.bio || '',
-        vehicleInfo: res.data.vehicleInfo || ''
+        vehicleInfo: res.data.vehicleInfo || '',
+        upiId: res.data.upiId || ''
       })
     }catch(err){
       console.error('Failed to fetch profile', err)
@@ -648,6 +651,23 @@ export default function Profile(){
                     placeholder="e.g., Honda City, White, DL-1234"
                   />
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                    UPI ID (for receiving payments)
+                  </label>
+                  <input
+                    type="text"
+                    value={editData.upiId || ''}
+                    onChange={(e) => setEditData({ ...editData, upiId: e.target.value })}
+                    className="w-full p-2 rounded"
+                    style={{ border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                    placeholder="yourname@upi"
+                  />
+                  <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                    Your UPI ID will be shown to passengers for direct payments
+                  </p>
+                </div>
                 
                 <div className="flex gap-2">
                   <button
@@ -666,7 +686,8 @@ export default function Profile(){
                         name: userInfo.name || '',
                         phone: userInfo.phone || '',
                         bio: userInfo.bio || '',
-                        vehicleInfo: userInfo.vehicleInfo || ''
+                        vehicleInfo: userInfo.vehicleInfo || '',
+                        upiId: userInfo.upiId || ''
                       })
                     }}
                     className="flex-1 px-4 py-2 rounded-lg font-medium transition-all hover:opacity-80"
@@ -765,13 +786,23 @@ export default function Profile(){
               <p className="text-sm font-medium mb-3" style={{ color: 'var(--text-secondary)' }}>
                 🪪 Driver License/ID:
               </p>
-              <div className="rounded-lg overflow-hidden" style={{ border: '2px solid var(--border-color)' }}>
+              <div className="rounded-lg overflow-hidden" style={{ border: '2px solid var(--border-color)', backgroundColor: '#f5f5f5' }}>
                 <img 
                   src={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${userInfo.driverIdImage}`} 
                   alt="Driver ID" 
                   className="w-full h-auto object-contain cursor-pointer hover:opacity-90 transition-opacity"
-                  style={{ maxHeight: '400px' }}
+                  style={{ maxHeight: '400px', width: '100%', display: 'block' }}
                   onClick={() => window.open(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${userInfo.driverIdImage}`, '_blank')}
+                  onLoad={(e) => {
+                    console.log('✅ Driver ID image loaded successfully');
+                    e.target.style.backgroundColor = 'transparent';
+                  }}
+                  onError={(e) => {
+                    console.error('❌ Failed to load driver ID image');
+                    console.error('Image URL:', e.target.src);
+                    e.target.style.display = 'none';
+                    e.target.parentElement.innerHTML = '<div style="padding: 40px; text-align: center; color: #666;"><p>⚠️ Image failed to load</p><p style="font-size: 12px; margin-top: 8px;">' + e.target.src + '</p></div>';
+                  }}
                 />
               </div>
               <p className="text-xs mt-2 text-center" style={{ color: 'var(--text-muted)' }}>

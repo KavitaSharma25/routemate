@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import axios from 'axios'
+import { useNotification } from '../components/NotificationToast'
 
 export default function RideHistory(){
   const { user, token } = useAuth() || {}
@@ -10,6 +11,7 @@ export default function RideHistory(){
   const [ratingModal, setRatingModal] = useState(null)
   const [rating, setRating] = useState(5)
   const [comment, setComment] = useState('')
+  const { showNotification } = useNotification()
 
   useEffect(()=>{
     fetchRideHistory()
@@ -40,12 +42,12 @@ export default function RideHistory(){
         headers: { Authorization: `Bearer ${token}` }
       })
       
-      alert('Rating submitted successfully!')
+      showNotification('Rating submitted successfully!', 'success')
       setRatingModal(null)
       setRating(5)
       setComment('')
     }catch(err){
-      alert(err.response?.data?.message || 'Failed to submit rating')
+      showNotification(err.response?.data?.message || 'Failed to submit rating', 'error')
     }
   }
 

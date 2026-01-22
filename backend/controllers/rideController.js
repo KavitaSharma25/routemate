@@ -25,14 +25,26 @@ exports.createRide = async (req, res) => {
  */
 exports.searchRides = async (req, res) => {
   try {
+    // Extract search filters from query parameters
     const { to, from, date, seats } = req.query;
+    
+    // Build MongoDB query - start with only open rides
     const query = { status: 'open' };
+    
+    // Add destination filter (case-insensitive regex)
     if (to) query.to = new RegExp(to, 'i');
+    
+    // Add origin filter (case-insensitive regex)
     if (from) query.from = new RegExp(from, 'i');
+    
+    // Add date filter (rides on or after specified date)
     if (date) query.date = { $gte: new Date(date) };
+    
+    // Add seats filter (rides with at least specified seats available)
     if (seats) query.seatsAvailable = { $gte: parseInt(seats, 10) };
 
-    const rides = await Ride.find(query).populate('provider', 'name email driverVerified');
+    // Execute query and populate provider details including UPI ID
+    const rides = await Ride.find(query).populate('provider', 'name email driverVerified upiId phone');
     res.json(rides);
   } catch (error) {
     console.error(error);
@@ -42,43 +54,182 @@ exports.searchRides = async (req, res) => {
 
 /**
  * Book a seat on a ride
- * Creates pending booking request and notifies provider
+ * Handles three payment methods: online (Razorpay), UPI, and cash
  */
 exports.bookRide = async (req, res) => {
   try {
     const { rideId } = req.params;
+    const { seats = 1, paymentMethod = 'cash' } = req.body; // Default to cash payment
+    
     const ride = await Ride.findById(rideId);
     if (!ride) return res.status(404).json({ message: 'Ride not found' });
-    if (ride.seatsAvailable <= 0) return res.status(400).json({ message: 'No seats available' });
-
-    // create a pending booking entry instead of immediately confirming
-    const booking = { user: req.user.id, status: 'pending', createdAt: new Date() };
-    ride.bookings.push(booking);
-    await ride.save();
-
-    // Notify provider
-    const notification = new Notification({ user: ride.provider, type: 'ride_request', message: `${req.user.name || 'A user'} requested a seat`, metadata: { ride: ride._id } });
-    await notification.save();
-
-    // email provider
-    try {
-      const provider = await User.findById(ride.provider);
-      if (provider && provider.email) {
-        await sendEmail({
-          to: provider.email,
-          subject: `New ride request for your ride to ${ride.to}`,
-          text: `${req.user.name || 'A user'} has requested a seat on your ride scheduled for ${new Date(ride.date).toLocaleString()}.`,
-          html: `<p><strong>${req.user.name || 'A user'}</strong> has requested a seat on your ride to <strong>${ride.to}</strong> scheduled for <em>${new Date(ride.date).toLocaleString()}</em>.</p>`
-        });
-      }
-    } catch (err) {
-      console.error('Error sending provider email', err);
+    
+    // Validate seats
+    const requestedSeats = parseInt(seats, 10);
+    if (isNaN(requestedSeats) || requestedSeats < 1) {
+      return res.status(400).json({ message: 'Invalid number of seats' });
+    }
+    
+    if (ride.seatsAvailable < requestedSeats) {
+      return res.status(400).json({ 
+        message: `Only ${ride.seatsAvailable} seat(s) available, you requested ${requestedSeats}` 
+      });
     }
 
-    res.json({ message: 'Ride request submitted (pending provider confirmation)', bookingId: ride.bookings[ride.bookings.length - 1]._id, rideId: ride._id });
+    const totalAmount = ride.price * requestedSeats;
+
+    // Handle different payment methods
+    switch (paymentMethod) {
+      case 'online': {
+        // Online payment via Razorpay
+        if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+          return res.status(503).json({ 
+            message: 'Online payment not available. Razorpay is not configured. Please choose cash or UPI payment.' 
+          });
+        }
+
+        const Razorpay = require('razorpay');
+        const razorpay = new Razorpay({ 
+          key_id: process.env.RAZORPAY_KEY_ID, 
+          key_secret: process.env.RAZORPAY_KEY_SECRET 
+        });
+
+        // Create Razorpay order
+        const order = await razorpay.orders.create({
+          amount: Math.round(totalAmount * 100), // Convert to paise
+          currency: 'INR',
+          receipt: `ride_${rideId}_${Date.now()}`,
+          notes: {
+            rideId: rideId,
+            userId: req.user.id,
+            seats: requestedSeats
+          }
+        });
+
+        // Create booking with payment pending
+        const booking = {
+          user: req.user.id,
+          seats: requestedSeats,
+          status: 'pending',
+          payment: {
+            method: 'online',
+            orderId: order.id,
+            amount: totalAmount,
+            paid: false
+          },
+          createdAt: new Date()
+        };
+
+        ride.bookings.push(booking);
+        await ride.save();
+
+        const bookingId = ride.bookings[ride.bookings.length - 1]._id;
+
+        return res.json({
+          message: 'Complete payment to confirm booking',
+          order: order,
+          keyId: process.env.RAZORPAY_KEY_ID,
+          bookingId: bookingId,
+          rideId: ride._id
+        });
+      }
+
+      case 'upi': {
+        // UPI payment - will be verified manually
+        const booking = {
+          user: req.user.id,
+          seats: requestedSeats,
+          status: 'pending_verification',
+          payment: {
+            method: 'upi',
+            amount: totalAmount,
+            paid: false,
+            verificationPending: true
+          },
+          createdAt: new Date()
+        };
+
+        ride.bookings.push(booking);
+        await ride.save();
+
+        // Notify user
+        const notification = new Notification({
+          user: req.user.id,
+          type: 'upi_payment_pending',
+          message: `UPI payment submitted for ride to ${ride.to}. Awaiting verification.`,
+          metadata: { ride: ride._id }
+        });
+        await notification.save();
+
+        // Notify provider
+        const providerNotification = new Notification({
+          user: ride.provider,
+          type: 'upi_payment_received',
+          message: `UPI payment received for ride to ${ride.to}. Please verify.`,
+          metadata: { ride: ride._id }
+        });
+        await providerNotification.save();
+
+        return res.json({
+          message: 'UPI payment proof submitted. Booking will be confirmed after verification.',
+          bookingId: ride.bookings[ride.bookings.length - 1]._id,
+          rideId: ride._id,
+          status: 'pending_verification'
+        });
+      }
+
+      case 'cash':
+      default: {
+        // Cash payment - create pending booking for provider confirmation
+        const booking = {
+          user: req.user.id,
+          seats: requestedSeats,
+          status: 'pending',
+          payment: {
+            method: 'cash',
+            amount: totalAmount,
+            paid: false
+          },
+          createdAt: new Date()
+        };
+
+        ride.bookings.push(booking);
+        await ride.save();
+
+        // Notify provider
+        const notification = new Notification({
+          user: ride.provider,
+          type: 'ride_request',
+          message: `${req.user.name || 'A user'} requested ${requestedSeats} seat(s) - Cash payment`,
+          metadata: { ride: ride._id }
+        });
+        await notification.save();
+
+        // Email provider
+        try {
+          const provider = await User.findById(ride.provider);
+          if (provider && provider.email) {
+            await sendEmail({
+              to: provider.email,
+              subject: `New ride request for your ride to ${ride.to}`,
+              text: `${req.user.name || 'A user'} has requested ${requestedSeats} seat(s) on your ride. Payment: Cash`,
+              html: `<p><strong>${req.user.name || 'A user'}</strong> has requested <strong>${requestedSeats} seat(s)</strong> on your ride to <strong>${ride.to}</strong>.</p><p>Payment Method: <strong>Cash</strong></p>`
+            });
+          }
+        } catch (err) {
+          console.error('Error sending provider email', err);
+        }
+
+        return res.json({
+          message: 'Ride request submitted (pending provider confirmation)',
+          bookingId: ride.bookings[ride.bookings.length - 1]._id,
+          rideId: ride._id
+        });
+      }
+    }
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Booking error:', error);
+    res.status(500).json({ message: 'Server error: ' + error.message });
   }
 };
 
@@ -97,15 +248,27 @@ exports.confirmBooking = async (req, res) => {
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
     if (booking.status !== 'pending') return res.status(400).json({ message: 'Booking not pending' });
 
+    // Get number of seats from booking
+    const seatsToBook = booking.seats || 1;
+    
+    // Check if enough seats are available
+    if (ride.seatsAvailable < seatsToBook) {
+      return res.status(400).json({ 
+        message: `Not enough seats available. Requested: ${seatsToBook}, Available: ${ride.seatsAvailable}` 
+      });
+    }
+
     // If a price is set for the ride, create an order and return to frontend
+    // Check if this is a paid ride
     if (ride.price && parseFloat(ride.price) > 0) {
-      // Check if Razorpay is configured
+      // Verify Razorpay credentials are configured in environment
       if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
         console.warn('Razorpay not configured, confirming booking without payment');
-        // Confirm without payment if Razorpay not configured
+        
+        // Fallback: Confirm booking without payment if gateway not configured
         booking.status = 'confirmed';
-        ride.passengers.push(booking.user);
-        ride.seatsAvailable = Math.max(0, ride.seatsAvailable - 1);
+        ride.passengers.push(booking.user); // Add to confirmed passengers
+        ride.seatsAvailable = Math.max(0, ride.seatsAvailable - seatsToBook); // Decrement available seats
         await ride.save();
         return res.json({ message: 'Booking confirmed (payment gateway not configured)', booking });
       }
@@ -113,7 +276,13 @@ exports.confirmBooking = async (req, res) => {
       try {
         const Razorpay = require('razorpay');
         const razorpay = new Razorpay({ key_id: process.env.RAZORPAY_KEY_ID, key_secret: process.env.RAZORPAY_KEY_SECRET });
-        const options = { amount: Math.round(parseFloat(ride.price) * 100), currency: 'INR', receipt: `ride_${ride._id}_booking_${bookingId}` };
+        // Calculate total price based on seats
+        const totalAmount = Math.round(parseFloat(ride.price) * seatsToBook * 100);
+        const options = { 
+          amount: totalAmount, 
+          currency: 'INR', 
+          receipt: `ride_${ride._id}_booking_${bookingId}` 
+        };
         const order = await razorpay.orders.create(options);
       // store orderId in booking.payment.orderId
       booking.payment = booking.payment || {};
@@ -151,7 +320,7 @@ exports.confirmBooking = async (req, res) => {
         // If Razorpay fails (invalid credentials), confirm without payment
         booking.status = 'confirmed';
         ride.passengers.push(booking.user);
-        ride.seatsAvailable = Math.max(0, ride.seatsAvailable - 1);
+        ride.seatsAvailable = Math.max(0, ride.seatsAvailable - seatsToBook);
         await ride.save();
         
         // Notify seeker about confirmation
@@ -185,7 +354,7 @@ exports.confirmBooking = async (req, res) => {
     // free ride: confirm immediately
     booking.status = 'confirmed';
     ride.passengers.push(booking.user);
-    ride.seatsAvailable = Math.max(0, ride.seatsAvailable - 1);
+    ride.seatsAvailable = Math.max(0, ride.seatsAvailable - seatsToBook); // Decrement seats by booked amount
     await ride.save();
 
     // notify seeker

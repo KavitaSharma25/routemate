@@ -74,7 +74,8 @@ const BookingWizard = ({ ride, onComplete, onCancel }) => {
   }
 
   const handleComplete = () => {
-    onComplete(formData)
+    // Pass payment method to parent
+    onComplete({ ...formData, paymentMethod: formData.paymentMethod })
   }
 
   const handleInputChange = (field, value) => {
@@ -261,8 +262,22 @@ const BookingWizard = ({ ride, onComplete, onCancel }) => {
                       <div className="payment-desc">Pay directly to the driver</div>
                     </div>
                   </div>
-                </label>
-              </div>
+                </label>                <label className={`payment-option ${formData.paymentMethod === 'upi' ? 'selected' : ''}`}>
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="upi"
+                    checked={formData.paymentMethod === 'upi'}
+                    onChange={(e) => handleInputChange('paymentMethod', e.target.value)}
+                  />
+                  <div className="payment-content">
+                    <div className="payment-icon">📱</div>
+                    <div>
+                      <div className="payment-title">UPI / QR Code</div>
+                      <div className="payment-desc">Scan QR or enter UPI ID</div>
+                    </div>
+                  </div>
+                </label>              </div>
               {errors.paymentMethod && <div className="form-error">{errors.paymentMethod}</div>}
               
               {/* Booking Summary */}

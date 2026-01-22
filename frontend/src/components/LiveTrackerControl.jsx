@@ -1,14 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useChat } from '../context/ChatContext'
+import { useNotification } from './NotificationToast'
 
 export default function LiveTrackerControl({ rideId }){
   const chatContext = useChat()
   const sendLocation = chatContext?.sendLocation || (() => console.log('ChatContext not available'))
   const watchIdRef = useRef(null)
   const [running, setRunning] = useState(false)
+  const { showNotification } = useNotification()
 
   const start = () => {
-    if (!navigator.geolocation) return alert('Geolocation not supported')
+    if (!navigator.geolocation) {
+      showNotification('Geolocation is not supported by your browser', 'error')
+      return
+    }
     const id = navigator.geolocation.watchPosition(pos => {
       const lat = pos.coords.latitude
       const lng = pos.coords.longitude

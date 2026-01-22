@@ -17,6 +17,13 @@ function loadScript(src){
 export default function RazorpayCheckout({ order, keyId, onSuccess, onError, prefill }){
   const [loading, setLoading] = useState(false)
 
+  useEffect(() => {
+    // Auto-open checkout when component mounts
+    if (order && keyId) {
+      openCheckout()
+    }
+  }, [order, keyId])
+
   const openCheckout = async () => {
     if (!order || !keyId) return onError && onError(new Error('Missing order or keyId'))
     setLoading(true)
@@ -34,7 +41,12 @@ export default function RazorpayCheckout({ order, keyId, onSuccess, onError, pre
           onSuccess && onSuccess(response)
         },
         prefill: prefill || {},
-        theme: { color: '#1f2937' }
+        theme: { color: '#1f2937' },
+        modal: {
+          ondismiss: function() {
+            onError && onError(new Error('Payment cancelled'))
+          }
+        }
       }
       const rz = new window.Razorpay(options)
       rz.open()
@@ -45,8 +57,21 @@ export default function RazorpayCheckout({ order, keyId, onSuccess, onError, pre
   }
 
   return (
-    <button onClick={openCheckout} disabled={loading} className="px-4 py-2 bg-indigo-600 text-white rounded">
-      {loading ? 'Opening...' : 'Pay now'}
+    <button 
+      onClick={openCheckout} 
+      disabled={loading} 
+      className="btn btn-primary"
+      style={{
+        width: '100%',
+        padding: '14px 24px',
+        fontSize: '16px',
+        fontWeight: '600',
+        borderRadius: '10px',
+        cursor: loading ? 'not-allowed' : 'pointer',
+        opacity: loading ? 0.7 : 1
+      }}
+    >
+      {loading ? '⏳ Opening Razorpay...' : '💳 Pay with Razorpay'}
     </button>
   )
 }

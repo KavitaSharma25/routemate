@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
+import { useNotification } from '../components/NotificationToast'
+import { useConfirmDialog } from '../components/ConfirmDialog'
 
 export default function MyRides() {
   const { token, user } = useAuth() || {}
@@ -9,11 +11,13 @@ export default function MyRides() {
   const [loading, setLoading] = useState(true)
   const [msg, setMsg] = useState('')
   const nav = useNavigate()
+  const { showNotification } = useNotification()
+  const { showDialog } = useConfirmDialog()
 
   // Check if user is logged in
   useEffect(() => {
     if (!token) {
-      alert('You must be logged in to view this page')
+      showNotification('You must be logged in to view this page', 'error')
       nav('/login')
       return
     }
@@ -41,7 +45,15 @@ export default function MyRides() {
   }
 
   const handleCancelRide = async (rideId) => {
-    if (!window.confirm('Are you sure you want to cancel this ride?')) return
+    const confirmed = await showDialog({
+      title: 'Cancel Ride',
+      message: 'Are you sure you want to cancel this ride?',
+      confirmText: 'Yes, Cancel',
+      cancelText: 'No',
+      type: 'warning'
+    })
+    
+    if (!confirmed) return
     
     try {
       console.log('Cancelling ride:', rideId)
@@ -51,18 +63,26 @@ export default function MyRides() {
         { headers: { Authorization: `Bearer ${token}` } }
       )
       setMsg('✅ Ride cancelled successfully')
-      alert('✅ Ride cancelled successfully')
+      showNotification('Ride cancelled successfully', 'success')
       fetchMyRides()
     } catch (err) {
       console.error('Cancel error:', err)
       const errorMsg = err.response?.data?.message || 'Failed to cancel ride'
       setMsg('❌ ' + errorMsg)
-      alert('❌ ' + errorMsg)
+      showNotification(errorMsg, 'error')
     }
   }
 
   const handleDeleteRide = async (rideId) => {
-    if (!window.confirm('Are you sure you want to delete this ride? This cannot be undone.')) return
+    const confirmed = await showDialog({
+      title: 'Delete Ride',
+      message: 'Are you sure you want to delete this ride? This cannot be undone.',
+      confirmText: 'Yes, Delete',
+      cancelText: 'No',
+      type: 'error'
+    })
+    
+    if (!confirmed) return
     
     try {
       console.log('Deleting ride:', rideId)
@@ -71,19 +91,19 @@ export default function MyRides() {
         { headers: { Authorization: `Bearer ${token}` } }
       )
       setMsg('✅ Ride deleted successfully')
-      alert('✅ Ride deleted successfully')
+      showNotification('Ride deleted successfully', 'success')
       fetchMyRides()
     } catch (err) {
       console.error('Delete error:', err)
       const errorMsg = err.response?.data?.message || 'Failed to delete ride'
       setMsg('❌ ' + errorMsg)
-      alert('❌ ' + errorMsg)
+      showNotification(errorMsg, 'error')
     }
   }
 
   const handleConfirmBooking = async (rideId, bookingId) => {
     if (!token) {
-      alert('❌ You must be logged in to perform this action')
+      showNotification('You must be logged in to perform this action', 'error')
       nav('/login')
       return
     }
@@ -96,7 +116,7 @@ export default function MyRides() {
       )
       console.log('Confirm response:', res.data)
       setMsg('✅ ' + (res.data.message || 'Booking confirmed'))
-      alert('✅ ' + (res.data.message || 'Booking confirmed'))
+      showNotification(res.data.message || 'Booking confirmed', 'success')
       fetchMyRides()
     } catch (err) {
       console.error('Confirm error:', err)
@@ -106,13 +126,13 @@ export default function MyRides() {
         errorMsg = 'Only the ride provider can confirm bookings. Please log in as the user who created this ride.'
       }
       setMsg('❌ ' + errorMsg)
-      alert('❌ ' + errorMsg)
+      showNotification(errorMsg, 'error')
     }
   }
 
   const handleDeclineBooking = async (rideId, bookingId) => {
     if (!token) {
-      alert('❌ You must be logged in to perform this action')
+      showNotification('You must be logged in to perform this action', 'error')
       nav('/login')
       return
     }
@@ -125,7 +145,7 @@ export default function MyRides() {
       )
       console.log('Decline successful')
       setMsg('✅ Booking declined')
-      alert('✅ Booking declined')
+      showNotification('Booking declined', 'success')
       fetchMyRides()
     } catch (err) {
       console.error('Decline error:', err)
@@ -135,20 +155,26 @@ export default function MyRides() {
         errorMsg = 'Only the ride provider can decline bookings. Please log in as the user who created this ride.'
       }
       setMsg('❌ ' + errorMsg)
-      alert('❌ ' + errorMsg)
+      showNotification(errorMsg, 'error')
     }
   }
 
   const handleMarkComplete = async (rideId, bookingId) => {
     if (!token) {
-      alert('❌ You must be logged in to perform this action')
+      showNotification('You must be logged in to perform this action', 'error')
       nav('/login')
       return
     }
     
-    if (!window.confirm('Are you sure you want to mark this ride as complete? This requires confirmation from both the provider and passenger.')) {
-      return
-    }
+    const confirmed = await showDialog({
+      title: 'Mark Ride as Complete',
+      message: 'Are you sure you want to mark this ride as complete? This requires confirmation from both the provider and passenger.',
+      confirmText: 'Yes, Complete',
+      cancelText: 'Cancel',
+      type: 'info'
+    })
+    
+    if (!confirmed) return
     
     try {
       console.log('Marking ride as complete:', { rideId, bookingId })
@@ -159,14 +185,14 @@ export default function MyRides() {
       )
       console.log('Complete response:', res.data)
       setMsg('✅ ' + (res.data.message || 'Ride marked as complete'))
-      alert('✅ ' + (res.data.message || 'Ride marked as complete'))
+      showNotification(res.data.message || 'Ride marked as complete', 'success')
       fetchMyRides()
     } catch (err) {
       console.error('Mark complete error:', err)
       console.error('Error response:', err.response)
       let errorMsg = err.response?.data?.message || 'Failed to mark ride as complete'
       setMsg('❌ ' + errorMsg)
-      alert('❌ ' + errorMsg)
+      showNotification(errorMsg, 'error')
     }
   }
 
@@ -645,6 +671,14 @@ export default function MyRides() {
                                 color: 'var(--text-secondary)'
                               }}>
                                 {booking.user?.email || 'No email'}
+                              </p>
+                              <p style={{
+                                fontSize: '13px',
+                                color: 'var(--text-secondary)',
+                                marginTop: '4px',
+                                fontWeight: '500'
+                              }}>
+                                💺 {booking.seats || 1} seat(s)
                               </p>
                             </div>
                             
