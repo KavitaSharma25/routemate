@@ -2,6 +2,60 @@ const Ride = require('../models/Ride');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
 const sendEmail = require('../utils/sendEmail');
+const { generateOTP, getOTPExpiry, verifyOTP } = require('../utils/otpService');
+const { sendOTP: sendSMS } = require('../utils/smsService');
+
+/**
+ * Helper function to send OTP via Email and/or SMS
+ * @param {Object} passenger - Passenger user object
+ * @param {string} otp - 6-digit OTP code
+ * @param {string} deliveryMethod - 'email', 'sms', or 'both'
+ * @param {string} rideTo - Destination for email context
+ * @returns {Promise<Object>} - {emailSent: boolean, smsSent: boolean, smsError: string|null}
+ */
+async function sendOTPNotification(passenger, otp, deliveryMethod = 'email', rideTo = 'destination') {
+  const result = { emailSent: false, smsSent: false, smsError: null };
+
+  try {
+    // Send Email
+    if (deliveryMethod === 'email' || deliveryMethod === 'both') {
+      try {
+        if (passenger && passenger.email) {
+          await sendEmail({
+            to: passenger.email,
+            subject: `🔐 Your RouteMate OTP for Ride to ${rideTo}`,
+            text: `Your OTP for ride verification: ${otp}. Valid for 15 minutes. Do not share.`,
+            html: `<h2>🔐 Your Ride OTP</h2><p>Your OTP for ride verification:</p><p style="background-color: #f0f0f0; padding: 10px; border-radius: 5px;"><code style="font-size: 18px; font-weight: bold; letter-spacing: 2px;">${otp}</code></p><p><strong>Valid for:</strong> 15 minutes</p><p><em>Do not share this OTP with anyone.</em></p>`
+          });
+          result.emailSent = true;
+        }
+      } catch (emailErr) {
+        console.error('Error sending OTP email:', emailErr);
+      }
+    }
+
+    // Send SMS
+    if (deliveryMethod === 'sms' || deliveryMethod === 'both') {
+      try {
+        if (passenger && passenger.phone) {
+          const phoneClean = passenger.phone.replace(/\D/g, '').slice(-10);
+          const smsSent = await sendSMS(phoneClean, otp);
+          result.smsSent = smsSent;
+        } else {
+          result.smsError = 'Phone number not available';
+        }
+      } catch (smsErr) {
+        result.smsError = smsErr.message;
+        console.error('Error sending OTP SMS:', smsErr);
+      }
+    }
+
+    return result;
+  } catch (error) {
+    console.error('Error in sendOTPNotification:', error);
+    return result;
+  }
+}
 
 /**
  * Create a new ride offering
@@ -59,7 +113,7 @@ exports.searchRides = async (req, res) => {
 exports.bookRide = async (req, res) => {
   try {
     const { rideId } = req.params;
-    const { seats = 1, paymentMethod = 'cash' } = req.body; // Default to cash payment
+    const { seats = 1, paymentMethod = 'cash', otpDeliveryMethod = 'email' } = req.body; // Default to email OTP
     
     const ride = await Ride.findById(rideId);
     if (!ride) return res.status(404).json({ message: 'Ride not found' });
@@ -74,6 +128,11 @@ exports.bookRide = async (req, res) => {
       return res.status(400).json({ 
         message: `Only ${ride.seatsAvailable} seat(s) available, you requested ${requestedSeats}` 
       });
+    }
+
+    // Validate OTP delivery method
+    if (!['email', 'sms', 'both'].includes(otpDeliveryMethod)) {
+      return res.status(400).json({ message: 'Invalid OTP delivery method' });
     }
 
     const totalAmount = ride.price * requestedSeats;
@@ -205,20 +264,22 @@ exports.bookRide = async (req, res) => {
         });
         await notification.save();
 
-        // Email provider
-        try {
-          const provider = await User.findById(ride.provider);
-          if (provider && provider.email) {
-            await sendEmail({
-              to: provider.email,
-              subject: `New ride request for your ride to ${ride.to}`,
-              text: `${req.user.name || 'A user'} has requested ${requestedSeats} seat(s) on your ride. Payment: Cash`,
-              html: `<p><strong>${req.user.name || 'A user'}</strong> has requested <strong>${requestedSeats} seat(s)</strong> on your ride to <strong>${ride.to}</strong>.</p><p>Payment Method: <strong>Cash</strong></p>`
-            });
+        // Email provider (async, don't wait)
+        setImmediate(async () => {
+          try {
+            const provider = await User.findById(ride.provider);
+            if (provider && provider.email) {
+              await sendEmail({
+                to: provider.email,
+                subject: `New ride request for your ride to ${ride.to}`,
+                text: `${req.user.name || 'A user'} has requested ${requestedSeats} seat(s) on your ride. Payment: Cash`,
+                html: `<p><strong>${req.user.name || 'A user'}</strong> has requested <strong>${requestedSeats} seat(s)</strong> on your ride to <strong>${ride.to}</strong>.</p><p>Payment Method: <strong>Cash</strong></p>`
+              });
+            }
+          } catch (err) {
+            console.error('Error sending provider email', err);
           }
-        } catch (err) {
-          console.error('Error sending provider email', err);
-        }
+        });
 
         return res.json({
           message: 'Ride request submitted (pending provider confirmation)',
@@ -267,10 +328,14 @@ exports.confirmBooking = async (req, res) => {
         
         // Fallback: Confirm booking without payment if gateway not configured
         booking.status = 'confirmed';
+        // Generate OTP for ride verification
+        booking.otp = generateOTP();
+        booking.otpExpiry = getOTPExpiry();
+        booking.otpVerified = false;
         ride.passengers.push(booking.user); // Add to confirmed passengers
         ride.seatsAvailable = Math.max(0, ride.seatsAvailable - seatsToBook); // Decrement available seats
         await ride.save();
-        return res.json({ message: 'Booking confirmed (payment gateway not configured)', booking });
+        return res.json({ message: 'Booking confirmed (payment gateway not configured)', booking, otp: booking.otp });
       }
       
       try {
@@ -319,68 +384,107 @@ exports.confirmBooking = async (req, res) => {
         console.warn('Razorpay authentication failed, confirming booking without payment');
         // If Razorpay fails (invalid credentials), confirm without payment
         booking.status = 'confirmed';
+        // Generate OTP for ride verification
+        booking.otp = generateOTP();
+        booking.otpExpiry = getOTPExpiry();
+        booking.otpVerified = false;
         ride.passengers.push(booking.user);
         ride.seatsAvailable = Math.max(0, ride.seatsAvailable - seatsToBook);
         await ride.save();
         
-        // Notify seeker about confirmation
+        // Notify seeker about confirmation with OTP
         try {
           const note = new Notification({ 
             user: booking.user, 
             type: 'booking_confirmed', 
             message: `Your booking for ride from ${ride.from} to ${ride.to} has been confirmed!`, 
-            metadata: { ride: ride._id } 
+            metadata: { ride: ride._id, otp: booking.otp } 
           });
           await note.save();
           
-          // Send email notification
+          // Send email notification with OTP
           const seeker = await User.findById(booking.user);
           if (seeker && seeker.email) {
             await sendEmail({ 
               to: seeker.email, 
               subject: `✅ Booking Confirmed - Ride to ${ride.to}`, 
-              text: `Your booking has been confirmed for ${new Date(ride.date).toLocaleString()}.`,
-              html: `<h2>✅ Booking Confirmed!</h2><p>Your booking for the ride from <strong>${ride.from}</strong> to <strong>${ride.to}</strong> has been confirmed.</p><p><strong>Date:</strong> ${new Date(ride.date).toLocaleString()}</p><p><strong>Price:</strong> ₹${ride.price}</p>`
+              text: `Your booking has been confirmed for ${new Date(ride.date).toLocaleString()}. Your OTP for ride verification: ${booking.otp}`,
+              html: `<h2>✅ Booking Confirmed!</h2><p>Your booking for the ride from <strong>${ride.from}</strong> to <strong>${ride.to}</strong> has been confirmed.</p><p><strong>Date:</strong> ${new Date(ride.date).toLocaleString()}</p><p><strong>Price:</strong> ₹${ride.price}</p><p style="background-color: #f0f0f0; padding: 10px; border-radius: 5px;"><strong>Your OTP for ride verification:</strong> <code style="font-size: 18px; font-weight: bold; letter-spacing: 2px;">${booking.otp}</code></p><p><em>Share this OTP with your driver to confirm you're boarding the ride. OTP expires in 15 minutes.</em></p>`
             });
           }
         } catch (notifErr) {
           console.error('Error sending confirmation notification:', notifErr);
         }
         
-        return res.json({ message: 'Booking confirmed successfully!', booking, ride });
+        return res.json({ message: 'Booking confirmed successfully!', booking, otp: booking.otp });
       }
     }
 
     // free ride: confirm immediately
     booking.status = 'confirmed';
+    // Generate OTP for ride verification
+    booking.otp = generateOTP();
+    booking.otpExpiry = getOTPExpiry();
+    booking.otpVerified = false;
+    booking.otpDeliveryMethod = req.body.otpDeliveryMethod || 'email';
     ride.passengers.push(booking.user);
     ride.seatsAvailable = Math.max(0, ride.seatsAvailable - seatsToBook); // Decrement seats by booked amount
     await ride.save();
 
-    // notify seeker
+    // Send OTP via Email and/or SMS
+    const seeker = await User.findById(booking.user);
+    let otpNotificationResult = { emailSent: false, smsSent: false, smsError: null };
+    
+    try {
+      otpNotificationResult = await sendOTPNotification(
+        seeker, 
+        booking.otp, 
+        booking.otpDeliveryMethod, 
+        ride.to
+      );
+      
+      // Store SMS delivery status in booking
+      booking.smsSent = otpNotificationResult.smsSent;
+      booking.smsError = otpNotificationResult.smsError;
+      await ride.save();
+    } catch (err) {
+      console.error('Error sending OTP notification:', err);
+    }
+
+    // notify seeker with OTP
     const note = new Notification({ 
       user: booking.user, 
       type: 'booking_confirmed', 
       message: `✅ Your booking for ride from ${ride.from} to ${ride.to} has been confirmed!`, 
-      metadata: { ride: ride._id } 
+      metadata: { ride: ride._id, otp: booking.otp, otpDeliveryMethod: booking.otpDeliveryMethod } 
     });
     await note.save();
 
     try {
-      const seeker = await User.findById(booking.user);
-      if (seeker && seeker.email) {
+      if (seeker && seeker.email && (booking.otpDeliveryMethod === 'email' || booking.otpDeliveryMethod === 'both')) {
+        const smsNote = booking.otpDeliveryMethod === 'both' ? 'and SMS' : '';
         await sendEmail({ 
           to: seeker.email, 
           subject: `✅ Booking Confirmed - Ride to ${ride.to}`, 
-          text: `Your booking has been confirmed for ${new Date(ride.date).toLocaleString()}.`, 
-          html: `<h2>✅ Booking Confirmed!</h2><p>Your booking for the ride from <strong>${ride.from}</strong> to <strong>${ride.to}</strong> has been confirmed.</p><p><strong>Date:</strong> ${new Date(ride.date).toLocaleString()}</p>`
+          text: `Your booking has been confirmed for ${new Date(ride.date).toLocaleString()}. Your OTP: ${booking.otp}`, 
+          html: `<h2>✅ Booking Confirmed!</h2><p>Your booking for the ride from <strong>${ride.from}</strong> to <strong>${ride.to}</strong> has been confirmed.</p><p><strong>Date:</strong> ${new Date(ride.date).toLocaleString()}</p><p style="background-color: #f0f0f0; padding: 10px; border-radius: 5px;"><strong>Your OTP:</strong> <code style="font-size: 16px; font-weight: bold; letter-spacing: 2px;">${booking.otp}</code></p><p><em>Valid for 15 minutes.</em></p>`
         });
       }
     } catch (err) {
       console.error('Error emailing seeker on confirm', err);
     }
 
-    res.json({ message: 'Booking confirmed successfully!', ride, booking });
+    res.json({ 
+      message: 'Booking confirmed successfully!', 
+      ride, 
+      booking,
+      otpNotification: {
+        emailSent: otpNotificationResult.emailSent,
+        smsSent: otpNotificationResult.smsSent,
+        smsError: otpNotificationResult.smsError,
+        deliveryMethod: booking.otpDeliveryMethod
+      }
+    });
   } catch (error) {
     console.error('Error confirming booking:', error);
     res.status(500).json({ 
@@ -750,5 +854,238 @@ exports.markRideComplete = async (req, res) => {
   } catch (error) {
     console.error('Error marking ride complete:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+};
+
+/**
+ * Verify OTP for ride boarding
+ * Provider verifies the OTP provided by the passenger before allowing them to board
+ */
+exports.verifyOTP = async (req, res) => {
+  try {
+    const { rideId, bookingId } = req.params;
+    const { otp } = req.body;
+
+    if (!otp) {
+      return res.status(400).json({ message: 'OTP is required' });
+    }
+
+    const ride = await Ride.findById(rideId);
+    if (!ride) return res.status(404).json({ message: 'Ride not found' });
+
+    // Check if user is the ride provider
+    if (ride.provider.toString() !== req.user.id.toString()) {
+      return res.status(403).json({ message: 'Only ride provider can verify OTP' });
+    }
+
+    const booking = ride.bookings.id(bookingId);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+
+    // Verify the OTP
+    const otpVerification = verifyOTP(otp, booking.otp, booking.otpExpiry);
+    
+    if (!otpVerification.valid) {
+      return res.status(400).json({ message: otpVerification.message });
+    }
+
+    // Mark OTP as verified
+    booking.otpVerified = true;
+    await ride.save();
+
+    // Notify passenger that OTP was verified
+    try {
+      const note = new Notification({
+        user: booking.user,
+        type: 'otp_verified',
+        message: `Your OTP for ride to ${ride.to} has been verified! You're confirmed on the ride.`,
+        metadata: { ride: ride._id, booking: booking._id }
+      });
+      await note.save();
+
+      // Send email notification
+      const passenger = await User.findById(booking.user);
+      if (passenger && passenger.email) {
+        await sendEmail({
+          to: passenger.email,
+          subject: `✅ OTP Verified - Ride to ${ride.to}`,
+          text: `Your OTP has been verified. You're confirmed on the ride!`,
+          html: `<h2>✅ OTP Verified!</h2><p>Your OTP has been verified by the driver. You're confirmed on the ride to <strong>${ride.to}</strong>.</p><p><em>Have a safe journey!</em></p>`
+        });
+      }
+    } catch (err) {
+      console.error('Error sending OTP verification notification:', err);
+    }
+
+    res.json({
+      message: 'OTP verified successfully!',
+      otpVerified: true,
+      booking: {
+        _id: booking._id,
+        user: booking.user,
+        seats: booking.seats,
+        status: booking.status,
+        otpVerified: booking.otpVerified
+      }
+    });
+  } catch (error) {
+    console.error('Error verifying OTP:', error);
+    res.status(500).json({ message: 'Server error: ' + error.message });
+  }
+};
+
+/**
+ * Update driver's real-time location
+ * Called frequently by driver's mobile app/browser
+ */
+exports.updateLocation = async (req, res) => {
+  try {
+    const { rideId } = req.params;
+    const { latitude, longitude, accuracy } = req.body;
+
+    if (latitude === undefined || longitude === undefined) {
+      return res.status(400).json({ message: 'Latitude and longitude are required' });
+    }
+
+    const ride = await Ride.findById(rideId);
+    if (!ride) return res.status(404).json({ message: 'Ride not found' });
+
+    // Verify user is the ride provider
+    if (ride.provider.toString() !== req.user.id.toString()) {
+      return res.status(403).json({ message: 'Only ride provider can update location' });
+    }
+
+    // Only allow location updates for confirmed rides
+    if (ride.status !== 'confirmed' && ride.status !== 'open') {
+      return res.status(400).json({ message: 'Cannot update location for this ride' });
+    }
+
+    // Update ride location
+    ride.currentLocation = {
+      latitude: parseFloat(latitude),
+      longitude: parseFloat(longitude),
+      accuracy: accuracy ? parseFloat(accuracy) : null,
+      timestamp: new Date()
+    };
+
+    // Set tracking as enabled if not already
+    if (!ride.trackingEnabled) {
+      ride.trackingEnabled = true;
+      ride.trackingStartTime = new Date();
+    }
+
+    await ride.save();
+
+    // Broadcast location update to all passengers via WebSocket
+    try {
+      const { getIO } = require('../utils/socket');
+      const io = getIO();
+      
+      // Send to all passengers on this ride
+      ride.passengers.forEach(passengerId => {
+        io.to(`user_${passengerId}`).emit('location-update', {
+          rideId: ride._id,
+          currentLocation: ride.currentLocation,
+          provider: {
+            id: ride.provider,
+            name: ride.provider.name || 'Driver'
+          }
+        });
+      });
+    } catch (socketErr) {
+      console.error('Error broadcasting location:', socketErr);
+      // Don't fail the request if socket fails
+    }
+
+    res.json({
+      message: 'Location updated successfully',
+      location: ride.currentLocation
+    });
+  } catch (error) {
+    console.error('Error updating location:', error);
+    res.status(500).json({ message: 'Server error: ' + error.message });
+  }
+};
+
+/**
+ * Get current ride location (for passenger to see driver location)
+ */
+exports.getRideLocation = async (req, res) => {
+  try {
+    const { rideId } = req.params;
+    const ride = await Ride.findById(rideId).populate('provider', 'name phone email');
+    
+    if (!ride) return res.status(404).json({ message: 'Ride not found' });
+
+    // Verify user is either provider or passenger
+    const isProvider = ride.provider._id.toString() === req.user.id.toString();
+    const isPassenger = ride.passengers.some(p => p.toString() === req.user.id.toString());
+
+    if (!isProvider && !isPassenger) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    res.json({
+      rideId: ride._id,
+      currentLocation: ride.currentLocation,
+      trackingEnabled: ride.trackingEnabled,
+      trackingStartTime: ride.trackingStartTime,
+      provider: {
+        id: ride.provider._id,
+        name: ride.provider.name,
+        phone: ride.provider.phone,
+        rating: ride.provider.rating || 0
+      },
+      route: {
+        from: ride.from,
+        to: ride.to,
+        date: ride.date,
+        distance: ride.distance || null // Add distance calculation if available
+      }
+    });
+  } catch (error) {
+    console.error('Error getting ride location:', error);
+    res.status(500).json({ message: 'Server error: ' + error.message });
+  }
+};
+
+/**
+ * Stop location tracking for a ride
+ */
+exports.stopTracking = async (req, res) => {
+  try {
+    const { rideId } = req.params;
+    const ride = await Ride.findById(rideId);
+    
+    if (!ride) return res.status(404).json({ message: 'Ride not found' });
+
+    // Verify user is the ride provider
+    if (ride.provider.toString() !== req.user.id.toString()) {
+      return res.status(403).json({ message: 'Only ride provider can stop tracking' });
+    }
+
+    // Stop tracking
+    ride.trackingEnabled = false;
+    ride.trackingEndTime = new Date();
+    await ride.save();
+
+    // Notify passengers that tracking has stopped
+    try {
+      const { getIO } = require('../utils/socket');
+      const io = getIO();
+      
+      ride.passengers.forEach(passengerId => {
+        io.to(`user_${passengerId}`).emit('tracking-stopped', {
+          rideId: ride._id,
+          message: 'Driver has stopped sharing location'
+        });
+      });
+    } catch (socketErr) {
+      console.error('Error notifying passengers:', socketErr);
+    }
+
+    res.json({ message: 'Location tracking stopped', trackingEnabled: false });
+  } catch (error) {
+    console.error('Error stopping tracking:', error);
+    res.status(500).json({ message: 'Server error: ' + error.message });
   }
 };

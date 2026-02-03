@@ -36,7 +36,22 @@ const userSchema = new mongoose.Schema({
   phoneOTP: { type: String }, // Temporary OTP storage
   phoneOTPExpiry: { type: Date }, // OTP expiration time
   bio: { type: String }, // User bio/description
-  vehicleInfo: { type: String }, // Vehicle details (for drivers)
+  
+  // Vehicle Details (for drivers)
+  vehicleInfo: { type: String }, // Legacy field for backwards compatibility
+  carDetails: {
+    make: { type: String }, // Car brand (e.g., Honda, Toyota)
+    model: { type: String }, // Car model (e.g., City, Camry)
+    year: { type: Number }, // Manufacturing year
+    color: { type: String }, // Car color
+    licensePlate: { type: String }, // License plate number
+    seats: { type: Number, min: 1, max: 8, default: 4 }, // Number of available seats
+    fuelType: { type: String, enum: ['petrol', 'diesel', 'cng', 'electric', 'hybrid'] }, // Fuel type
+    transmission: { type: String, enum: ['manual', 'automatic'] }, // Transmission type
+    ac: { type: Boolean, default: true }, // AC availability
+    photos: [{ type: String }] // Array of car photo URLs
+  },
+  
   upiId: { type: String }, // UPI ID for receiving payments (for drivers)
   
   // Rating System

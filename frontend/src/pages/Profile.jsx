@@ -34,6 +34,17 @@ export default function Profile(){
         phone: res.data.phone || '',
         bio: res.data.bio || '',
         vehicleInfo: res.data.vehicleInfo || '',
+        carDetails: {
+          make: res.data.carDetails?.make || '',
+          model: res.data.carDetails?.model || '',
+          year: res.data.carDetails?.year || '',
+          color: res.data.carDetails?.color || '',
+          licensePlate: res.data.carDetails?.licensePlate || '',
+          seats: res.data.carDetails?.seats || 4,
+          fuelType: res.data.carDetails?.fuelType || 'petrol',
+          transmission: res.data.carDetails?.transmission || 'manual',
+          ac: res.data.carDetails?.ac !== undefined ? res.data.carDetails.ac : true
+        },
         upiId: res.data.upiId || ''
       })
     }catch(err){
@@ -638,19 +649,178 @@ export default function Profile(){
                   />
                 </div>
                 
-                <div>
-                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
-                    Vehicle Info (if driver)
-                  </label>
-                  <input
-                    type="text"
-                    value={editData.vehicleInfo || ''}
-                    onChange={(e) => setEditData({ ...editData, vehicleInfo: e.target.value })}
-                    className="w-full p-2 rounded"
-                    style={{ border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
-                    placeholder="e.g., Honda City, White, DL-1234"
-                  />
-                </div>
+                {userInfo.isDriver && (
+                  <div className="space-y-4 p-4 rounded-lg" style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)' }}>
+                    <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>🚗 Car Details</h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                          Car Make *
+                        </label>
+                        <input
+                          type="text"
+                          value={editData.carDetails?.make || ''}
+                          onChange={(e) => setEditData({ 
+                            ...editData, 
+                            carDetails: { ...editData.carDetails, make: e.target.value }
+                          })}
+                          className="w-full p-2 rounded"
+                          style={{ border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                          placeholder="e.g., Honda, Toyota, Maruti"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                          Car Model *
+                        </label>
+                        <input
+                          type="text"
+                          value={editData.carDetails?.model || ''}
+                          onChange={(e) => setEditData({ 
+                            ...editData, 
+                            carDetails: { ...editData.carDetails, model: e.target.value }
+                          })}
+                          className="w-full p-2 rounded"
+                          style={{ border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                          placeholder="e.g., City, Camry, Swift"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                          Year
+                        </label>
+                        <input
+                          type="number"
+                          value={editData.carDetails?.year || ''}
+                          onChange={(e) => setEditData({ 
+                            ...editData, 
+                            carDetails: { ...editData.carDetails, year: parseInt(e.target.value) || '' }
+                          })}
+                          className="w-full p-2 rounded"
+                          style={{ border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                          placeholder="2020"
+                          min="1990"
+                          max="2026"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                          Color
+                        </label>
+                        <input
+                          type="text"
+                          value={editData.carDetails?.color || ''}
+                          onChange={(e) => setEditData({ 
+                            ...editData, 
+                            carDetails: { ...editData.carDetails, color: e.target.value }
+                          })}
+                          className="w-full p-2 rounded"
+                          style={{ border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                          placeholder="e.g., White, Black, Silver"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                          License Plate *
+                        </label>
+                        <input
+                          type="text"
+                          value={editData.carDetails?.licensePlate || ''}
+                          onChange={(e) => setEditData({ 
+                            ...editData, 
+                            carDetails: { ...editData.carDetails, licensePlate: e.target.value.toUpperCase() }
+                          })}
+                          className="w-full p-2 rounded"
+                          style={{ border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                          placeholder="DL01AB1234"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                          Available Seats
+                        </label>
+                        <select
+                          value={editData.carDetails?.seats || 4}
+                          onChange={(e) => setEditData({ 
+                            ...editData, 
+                            carDetails: { ...editData.carDetails, seats: parseInt(e.target.value) }
+                          })}
+                          className="w-full p-2 rounded"
+                          style={{ border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                        >
+                          <option value={1}>1 seat</option>
+                          <option value={2}>2 seats</option>
+                          <option value={3}>3 seats</option>
+                          <option value={4}>4 seats</option>
+                          <option value={5}>5 seats</option>
+                          <option value={6}>6 seats</option>
+                          <option value={7}>7 seats</option>
+                        </select>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                          Fuel Type
+                        </label>
+                        <select
+                          value={editData.carDetails?.fuelType || 'petrol'}
+                          onChange={(e) => setEditData({ 
+                            ...editData, 
+                            carDetails: { ...editData.carDetails, fuelType: e.target.value }
+                          })}
+                          className="w-full p-2 rounded"
+                          style={{ border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                        >
+                          <option value="petrol">Petrol</option>
+                          <option value="diesel">Diesel</option>
+                          <option value="cng">CNG</option>
+                          <option value="electric">Electric</option>
+                          <option value="hybrid">Hybrid</option>
+                        </select>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                          Transmission
+                        </label>
+                        <select
+                          value={editData.carDetails?.transmission || 'manual'}
+                          onChange={(e) => setEditData({ 
+                            ...editData, 
+                            carDetails: { ...editData.carDetails, transmission: e.target.value }
+                          })}
+                          className="w-full p-2 rounded"
+                          style={{ border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                        >
+                          <option value="manual">Manual</option>
+                          <option value="automatic">Automatic</option>
+                        </select>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="ac"
+                        checked={editData.carDetails?.ac !== false}
+                        onChange={(e) => setEditData({ 
+                          ...editData, 
+                          carDetails: { ...editData.carDetails, ac: e.target.checked }
+                        })}
+                        className="rounded"
+                      />
+                      <label htmlFor="ac" className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                        Air Conditioning Available
+                      </label>
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
@@ -687,6 +857,17 @@ export default function Profile(){
                         phone: userInfo.phone || '',
                         bio: userInfo.bio || '',
                         vehicleInfo: userInfo.vehicleInfo || '',
+                        carDetails: {
+                          make: userInfo.carDetails?.make || '',
+                          model: userInfo.carDetails?.model || '',
+                          year: userInfo.carDetails?.year || '',
+                          color: userInfo.carDetails?.color || '',
+                          licensePlate: userInfo.carDetails?.licensePlate || '',
+                          seats: userInfo.carDetails?.seats || 4,
+                          fuelType: userInfo.carDetails?.fuelType || 'petrol',
+                          transmission: userInfo.carDetails?.transmission || 'manual',
+                          ac: userInfo.carDetails?.ac !== undefined ? userInfo.carDetails.ac : true
+                        },
                         upiId: userInfo.upiId || ''
                       })
                     }}
@@ -729,12 +910,50 @@ export default function Profile(){
                   </div>
                 )}
                 
-                {userInfo.vehicleInfo && (
-                  <div>
-                    <div className="text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Vehicle</div>
-                    <div className="text-sm" style={{ color: 'var(--text-primary)' }}>
-                      {userInfo.vehicleInfo}
-                    </div>
+                {(userInfo.vehicleInfo || userInfo.carDetails?.make) && userInfo.isDriver && (
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>🚗 Vehicle Information</div>
+                    
+                    {userInfo.carDetails?.make ? (
+                      <div className="p-3 rounded-lg space-y-2" style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)' }}>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                            {userInfo.carDetails.make} {userInfo.carDetails.model}
+                            {userInfo.carDetails.year && ` (${userInfo.carDetails.year})`}
+                          </span>
+                          {userInfo.carDetails.color && (
+                            <span className="text-xs px-2 py-1 rounded" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}>
+                              {userInfo.carDetails.color}
+                            </span>
+                          )}
+                        </div>
+                        
+                        {userInfo.carDetails.licensePlate && (
+                          <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                            📋 License: {userInfo.carDetails.licensePlate}
+                          </div>
+                        )}
+                        
+                        <div className="flex gap-4 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                          {userInfo.carDetails.seats && (
+                            <span>👥 {userInfo.carDetails.seats} seats</span>
+                          )}
+                          {userInfo.carDetails.fuelType && (
+                            <span>⛽ {userInfo.carDetails.fuelType}</span>
+                          )}
+                          {userInfo.carDetails.transmission && (
+                            <span>⚙️ {userInfo.carDetails.transmission}</span>
+                          )}
+                          {userInfo.carDetails.ac && (
+                            <span>❄️ AC</span>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-sm" style={{ color: 'var(--text-primary)' }}>
+                        {userInfo.vehicleInfo}
+                      </div>
+                    )}
                   </div>
                 )}
                 

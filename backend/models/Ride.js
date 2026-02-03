@@ -60,9 +60,34 @@ const rideSchema = new mongoose.Schema({
       
       // Ride Completion Tracking (requires both parties to confirm)
       completedByUser: { type: Boolean, default: false }, // Passenger confirmed completion
-      completedByProvider: { type: Boolean, default: false } // Driver confirmed completion
+      completedByProvider: { type: Boolean, default: false }, // Driver confirmed completion
+      
+      // OTP Verification for ride start
+      otp: { type: String, default: null }, // One-Time Password for driver verification
+      otpExpiry: { type: Date, default: null }, // OTP expiration time (15 minutes)
+      otpVerified: { type: Boolean, default: false }, // Whether OTP was successfully verified
+      
+      // OTP Delivery Method
+      otpDeliveryMethod: {
+        type: String,
+        enum: ['email', 'sms', 'both'],
+        default: 'email'
+      }, // How OTP is delivered to passenger
+      smsSent: { type: Boolean, default: false }, // Whether SMS was successfully sent
+      smsError: { type: String, default: null } // Error message if SMS failed
     }
   ],
+  
+  // Real-time Location Tracking
+  currentLocation: {
+    latitude: { type: Number, default: null }, // Driver's current latitude
+    longitude: { type: Number, default: null }, // Driver's current longitude
+    accuracy: { type: Number, default: null }, // GPS accuracy in meters
+    timestamp: { type: Date, default: null } // Last location update time
+  },
+  trackingEnabled: { type: Boolean, default: false }, // Whether driver is sharing location
+  trackingStartTime: { type: Date, default: null }, // When driver started sharing location
+  trackingEndTime: { type: Date, default: null }, // When driver stopped sharing location
   
   // Reporting System
   reports: [{ 

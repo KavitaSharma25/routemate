@@ -126,6 +126,59 @@ export default function RideCard({ride, onBook, showBookingButton = true}){
             </div>
           </div>
         )}
+
+        {/* Vehicle Information */}
+        {ride.provider && (ride.provider.carDetails?.make || ride.provider.vehicleInfo) && (
+          <div className="p-3 rounded-lg mb-4" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-lg" role="img" aria-label="Vehicle">🚗</span>
+              <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                Vehicle Details
+              </span>
+            </div>
+            
+            {ride.provider.carDetails?.make ? (
+              <div className="space-y-1">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    {ride.provider.carDetails.make} {ride.provider.carDetails.model}
+                    {ride.provider.carDetails.year && ` (${ride.provider.carDetails.year})`}
+                  </span>
+                  {ride.provider.carDetails.color && (
+                    <span className="text-xs px-2 py-1 rounded" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-secondary)' }}>
+                      {ride.provider.carDetails.color}
+                    </span>
+                  )}
+                </div>
+                
+                {ride.provider.carDetails.licensePlate && (
+                  <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    📋 {ride.provider.carDetails.licensePlate}
+                  </div>
+                )}
+                
+                <div className="flex gap-3 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  {ride.provider.carDetails.seats && (
+                    <span>👥 {ride.provider.carDetails.seats} seats</span>
+                  )}
+                  {ride.provider.carDetails.fuelType && (
+                    <span>⛽ {ride.provider.carDetails.fuelType}</span>
+                  )}
+                  {ride.provider.carDetails.transmission && (
+                    <span>⚙️ {ride.provider.carDetails.transmission}</span>
+                  )}
+                  {ride.provider.carDetails.ac && (
+                    <span>❄️ AC</span>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="text-sm" style={{ color: 'var(--text-primary)' }}>
+                {ride.provider.vehicleInfo}
+              </div>
+            )}
+          </div>
+        )}
         
         {/* Seats & Price */}
         <div className="flex items-center justify-between p-3 rounded-lg mb-4" style={{ backgroundColor: 'var(--bg-tertiary)' }}>

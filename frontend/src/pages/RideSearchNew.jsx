@@ -22,6 +22,7 @@ export default function RideSearch(){
   const { showNotification } = useNotification()
   const [showBookingWizard, setShowBookingWizard] = useState(false)
   const [selectedRide, setSelectedRide] = useState(null)
+  const [bookingLoading, setBookingLoading] = useState(false)
 
   const fetch = async () => {
     setLoading(true)
@@ -78,10 +79,11 @@ export default function RideSearch(){
 
   const handleBookingComplete = async (bookingData) => {
     const token = auth?.token || localStorage.getItem('token')
+    setBookingLoading(true)
     try{
       const res = await axios.post(
         `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/rides/${selectedRide._id}/book`,
-        { seats: bookingData.seats },
+        { seats: bookingData.seats, paymentMethod: bookingData.paymentMethod },
         { headers: { Authorization: `Bearer ${token}` } }
       )
       // if backend responds with order and keyId, open checkout
@@ -101,6 +103,8 @@ export default function RideSearch(){
       fetch() // Refresh rides
     }catch(err){
       showNotification(err.response?.data?.message || 'Booking failed', 'error')
+    }finally{
+      setBookingLoading(false)
     }
   }
 
@@ -455,7 +459,9 @@ export default function RideSearch(){
             onCancel={() => {
               setShowBookingWizard(false)
               setSelectedRide(null)
+              setBookingLoading(false)
             }}
+            loading={bookingLoading}
           />
         )}
       </div>

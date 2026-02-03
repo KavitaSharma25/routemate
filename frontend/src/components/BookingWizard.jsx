@@ -1,24 +1,26 @@
 import React, { useState } from 'react'
 import './BookingWizard.css'
 
-const BookingWizard = ({ ride, onComplete, onCancel }) => {
+const BookingWizard = ({ ride, onComplete, onCancel, loading = false }) => {
   const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState({
     seats: 1,
     pickupPoint: '',
     phone: '',
     specialRequests: '',
-    paymentMethod: 'online'
+    paymentMethod: 'online',
+    otpDeliveryMethod: 'email'
   })
   const [errors, setErrors] = useState({})
 
-  const totalSteps = 4
+  const totalSteps = 5
 
   const steps = [
     { id: 1, title: 'Select Seats', icon: '💺' },
     { id: 2, title: 'Pickup Details', icon: '📍' },
     { id: 3, title: 'Contact Info', icon: '📱' },
-    { id: 4, title: 'Payment', icon: '💳' }
+    { id: 4, title: 'OTP Delivery', icon: '🔐' },
+    { id: 5, title: 'Payment', icon: '💳' }
   ]
 
   const validateStep = (step) => {
@@ -46,6 +48,11 @@ const BookingWizard = ({ ride, onComplete, onCancel }) => {
         }
         break
       case 4:
+        if (!formData.otpDeliveryMethod) {
+          newErrors.otpDeliveryMethod = 'Please select an OTP delivery method'
+        }
+        break
+      case 5:
         if (!formData.paymentMethod) {
           newErrors.paymentMethod = 'Please select a payment method'
         }
@@ -218,14 +225,77 @@ const BookingWizard = ({ ride, onComplete, onCancel }) => {
                 />
                 {errors.phone && <div className="form-error">{errors.phone}</div>}
                 <div className="form-hint">
-                  📱 We'll send booking confirmation via SMS
+                  📱 We'll send booking confirmation via your preferred method
                 </div>
               </div>
             </div>
           )}
 
-          {/* Step 4: Payment */}
+          {/* Step 4: OTP Delivery Method */}
           {currentStep === 4 && (
+            <div className="wizard-step-content fade-in">
+              <h3 className="text-xl font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
+                How should we send your ride OTP?
+              </h3>
+              <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
+                You'll receive a 6-digit OTP to share with your driver for verification
+              </p>
+              <div className="payment-options">
+                <label className={`payment-option ${formData.otpDeliveryMethod === 'email' ? 'selected' : ''}`}>
+                  <input
+                    type="radio"
+                    name="otpDeliveryMethod"
+                    value="email"
+                    checked={formData.otpDeliveryMethod === 'email'}
+                    onChange={(e) => handleInputChange('otpDeliveryMethod', e.target.value)}
+                  />
+                  <div className="payment-content">
+                    <div className="payment-icon">📧</div>
+                    <div>
+                      <div className="payment-title">Email</div>
+                      <div className="payment-desc">OTP sent to your email inbox</div>
+                    </div>
+                  </div>
+                </label>
+                <label className={`payment-option ${formData.otpDeliveryMethod === 'sms' ? 'selected' : ''}`}>
+                  <input
+                    type="radio"
+                    name="otpDeliveryMethod"
+                    value="sms"
+                    checked={formData.otpDeliveryMethod === 'sms'}
+                    onChange={(e) => handleInputChange('otpDeliveryMethod', e.target.value)}
+                  />
+                  <div className="payment-content">
+                    <div className="payment-icon">📱</div>
+                    <div>
+                      <div className="payment-title">SMS Text Message</div>
+                      <div className="payment-desc">Instant SMS to your phone</div>
+                    </div>
+                  </div>
+                </label>
+                <label className={`payment-option ${formData.otpDeliveryMethod === 'both' ? 'selected' : ''}`}>
+                  <input
+                    type="radio"
+                    name="otpDeliveryMethod"
+                    value="both"
+                    checked={formData.otpDeliveryMethod === 'both'}
+                    onChange={(e) => handleInputChange('otpDeliveryMethod', e.target.value)}
+                  />
+                  <div className="payment-content">
+                    <div className="payment-icon">📧📱</div>
+                    <div>
+                      <div className="payment-title">Email & SMS</div>
+                      <div className="payment-desc">Get OTP on both channels</div>
+                    </div>
+                  </div>
+                </label>
+              </div>
+              {errors.otpDeliveryMethod && <div className="form-error">{errors.otpDeliveryMethod}</div>}
+            </div>
+          )}
+
+          {/* Step 5: Payment */}
+          {currentStep === 5 && (
             <div className="wizard-step-content fade-in">
               <h3 className="text-xl font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
                 Choose payment method
@@ -299,6 +369,10 @@ const BookingWizard = ({ ride, onComplete, onCancel }) => {
                   <span>Phone:</span>
                   <span className="font-medium">{formData.phone}</span>
                 </div>
+                <div className="summary-row">
+                  <span>OTP Delivery:</span>
+                  <span className="font-medium">{formData.otpDeliveryMethod === 'email' ? '📧 Email' : formData.otpDeliveryMethod === 'sms' ? '📱 SMS' : '📧 Email & 📱 SMS'}</span>
+                </div>
                 <div className="summary-divider"></div>
                 <div className="summary-row summary-total">
                   <span>Total Amount:</span>
@@ -327,8 +401,17 @@ const BookingWizard = ({ ride, onComplete, onCancel }) => {
           <button
             onClick={handleNext}
             className="btn btn-primary"
+            disabled={loading}
           >
-            {currentStep === totalSteps ? (
+            {loading ? (
+              <>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="animate-spin">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25"></circle>
+                  <path fill="currentColor" className="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Processing...
+              </>
+            ) : currentStep === totalSteps ? (
               <>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                   <path d="M9 11l3 3L22 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>

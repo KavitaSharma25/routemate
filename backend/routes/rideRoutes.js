@@ -66,6 +66,21 @@ router.post('/:rideId/bookings/:bookingId/decline', protect, rideController.decl
 // POST /api/rides/:rideId/bookings/:bookingId/complete - Mark ride as completed
 router.post('/:rideId/bookings/:bookingId/complete', protect, rideController.markRideComplete);
 
+// POST /api/rides/:rideId/bookings/:bookingId/verify-otp - Verify OTP for ride boarding
+router.post('/:rideId/bookings/:bookingId/verify-otp', protect, rideController.verifyOTP);
+
+// ========================
+// Real-time Location Tracking (Protected)
+// ========================
+// POST /api/rides/:rideId/update-location - Driver updates their location
+router.post('/:rideId/update-location', protect, rideController.updateLocation);
+
+// GET /api/rides/:rideId/location - Get current ride location
+router.get('/:rideId/location', protect, rideController.getRideLocation);
+
+// POST /api/rides/:rideId/stop-tracking - Stop location tracking
+router.post('/:rideId/stop-tracking', protect, rideController.stopTracking);
+
 // ========================
 // Cancellation and Reporting (Protected)
 // ========================

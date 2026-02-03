@@ -11,21 +11,25 @@ const { sendOTP: sendSMS } = require('../utils/smsService');
 exports.sendOTP = async (req, res) => {
   try {
     const { phone, email } = req.body;
+    console.log('📱 OTP Request received:', { phone, email });
 
     // Validate phone number format (10 digits)
     if (!phone || !/^\d{10}$/.test(phone)) {
+      console.log('❌ Invalid phone format:', phone);
       return res.status(400).json({ message: 'Please provide a valid 10-digit phone number' });
     }
 
     // Check if phone is already registered and verified
     const existingUser = await User.findOne({ phone, phoneVerified: true });
     if (existingUser) {
+      console.log('⚠️ Phone already registered:', phone);
       return res.status(400).json({ message: 'This phone number is already registered' });
     }
 
     // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+    console.log('✅ OTP Generated:', { phone, otp, expiresIn: '10 minutes' });
 
     // Send OTP via SMS service
     let smsSent = false;
@@ -99,7 +103,7 @@ exports.verifyOTP = async (req, res) => {
 exports.register = async (req, res) => {
   try {
     // Extract user registration data from request body
-    const { name, email, password, role, isDriver, phone, phoneVerified } = req.body;
+    const { name, email, password, role, isDriver, phone, phoneVerified, carDetails } = req.body;
 
     // Enforce college email domain validation
     if (!email || !email.endsWith('@chitkara.edu.in')) {
@@ -130,7 +134,7 @@ exports.register = async (req, res) => {
     const hashed = await bcrypt.hash(password, salt);
 
     // Create new user document with hashed password
-    const user = new User({ 
+    const userData = { 
       name, 
       email, 
       password: hashed, 
@@ -138,7 +142,27 @@ exports.register = async (req, res) => {
       isDriver: !!isDriver,
       phone,
       phoneVerified: true // Mark as verified after OTP confirmation
-    });
+    };
+
+    // Add car details if user is registering as a driver
+    if (isDriver && carDetails) {
+      userData.carDetails = {
+        make: carDetails.make,
+        model: carDetails.model,
+        year: carDetails.year,
+        color: carDetails.color,
+        licensePlate: carDetails.licensePlate,
+        seats: carDetails.seats || 4,
+        fuelType: carDetails.fuelType || 'petrol',
+        transmission: carDetails.transmission || 'manual',
+        ac: carDetails.ac !== undefined ? carDetails.ac : true
+      };
+      
+      // Also set legacy vehicleInfo for backwards compatibility
+      userData.vehicleInfo = `${carDetails.make} ${carDetails.model}${carDetails.color ? ', ' + carDetails.color : ''}${carDetails.licensePlate ? ', ' + carDetails.licensePlate : ''}`;
+    }
+
+    const user = new User(userData);
     await user.save();
 
     // Generate JWT token valid for 7 days
@@ -147,7 +171,7 @@ exports.register = async (req, res) => {
     // Return token and user info (excluding password)
     res.json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role, phone: user.phone } });
   } catch (error) {
-    console.error(error);
+    console.error('Registration error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -220,13 +244,13 @@ exports.uploadDriverId = async (req, res) => {
 
 /**
  * Update user profile information
- * Allows updating name, phone, bio, and vehicle information
+ * Allows updating name, phone, bio, vehicle information, and car details
  */
 exports.updateProfile = async (req, res) => {
   try {
     if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
 
-    const { name, phone, bio, vehicleInfo } = req.body;
+    const { name, phone, bio, vehicleInfo, carDetails } = req.body;
     
     const user = await User.findById(req.user.id).select('-password');
     
@@ -234,6 +258,30 @@ exports.updateProfile = async (req, res) => {
     if (phone !== undefined) user.phone = phone;
     if (bio !== undefined) user.bio = bio;
     if (vehicleInfo !== undefined) user.vehicleInfo = vehicleInfo;
+    
+    // Update car details if provided
+    if (carDetails !== undefined) {
+      if (carDetails === null) {
+        user.carDetails = undefined;
+      } else {
+        user.carDetails = {
+          make: carDetails.make,
+          model: carDetails.model,
+          year: carDetails.year,
+          color: carDetails.color,
+          licensePlate: carDetails.licensePlate,
+          seats: carDetails.seats || 4,
+          fuelType: carDetails.fuelType || 'petrol',
+          transmission: carDetails.transmission || 'manual',
+          ac: carDetails.ac !== undefined ? carDetails.ac : true
+        };
+        
+        // Update legacy vehicleInfo for backwards compatibility
+        if (carDetails.make && carDetails.model) {
+          user.vehicleInfo = `${carDetails.make} ${carDetails.model}${carDetails.color ? ', ' + carDetails.color : ''}${carDetails.licensePlate ? ', ' + carDetails.licensePlate : ''}`;
+        }
+      }
+    }
     
     await user.save();
     

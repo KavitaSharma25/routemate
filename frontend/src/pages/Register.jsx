@@ -26,6 +26,7 @@ export default function Register(){
   const [tempOTPData, setTempOTPData] = useState(null)
   
   const phoneValue = watch('phone')
+  const isDriverValue = watch('isDriver')
   
   // Send OTP to phone number
   const handleSendOTP = async () => {
@@ -121,10 +122,27 @@ export default function Register(){
     }
     
     try{
-      const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/register`, {
+      // Prepare registration data
+      const registrationData = {
         ...data,
         phoneVerified: otpVerified
-      })
+      }
+
+      // If user is registering as a driver, include car details
+      if (data.isDriver) {
+        registrationData.carDetails = {
+          make: data.carMake,
+          model: data.carModel,
+          color: data.carColor,
+          licensePlate: data.licensePlate,
+          seats: parseInt(data.carSeats) || 4,
+          fuelType: data.fuelType || 'petrol',
+          transmission: 'manual', // Default for registration
+          ac: data.hasAC !== false
+        }
+      }
+
+      const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/register`, registrationData)
       const token = res.data.token || res.data.accessToken
       const user = res.data.user || { id: res.data.userId || res.data._id || null, email: data.email }
       if (token) login({ token, user })
@@ -418,6 +436,172 @@ export default function Register(){
               <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '4px 0 0' }}>Register as a driver to offer rides to others</p>
             </label>
           </div>
+
+          {/* Car Details Section - Only shown if user wants to be a driver */}
+          {isDriverValue && (
+            <div style={{
+              marginBottom: '20px',
+              padding: '16px',
+              backgroundColor: 'var(--bg-primary)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '12px'
+            }}>
+              <h3 style={{ margin: '0 0 16px', fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)' }}>
+                🚗 Car Details
+              </h3>
+              <p style={{ margin: '0 0 16px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                Provide your car information so riders can identify your vehicle
+              </p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)' }}>
+                    Car Make *
+                  </label>
+                  <input
+                    {...register('carMake', { 
+                      required: isDriverValue ? 'Car make is required for drivers' : false 
+                    })}
+                    placeholder="Honda, Toyota"
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      border: errors.carMake ? '1px solid red' : '1px solid var(--border-color)',
+                      backgroundColor: 'var(--bg-secondary)',
+                      color: 'var(--text-primary)',
+                      fontSize: '13px'
+                    }}
+                  />
+                  {errors.carMake && <p style={{ color: 'red', fontSize: '10px', marginTop: '2px' }}>{errors.carMake.message}</p>}
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)' }}>
+                    Car Model *
+                  </label>
+                  <input
+                    {...register('carModel', { 
+                      required: isDriverValue ? 'Car model is required for drivers' : false 
+                    })}
+                    placeholder="City, Swift"
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      border: errors.carModel ? '1px solid red' : '1px solid var(--border-color)',
+                      backgroundColor: 'var(--bg-secondary)',
+                      color: 'var(--text-primary)',
+                      fontSize: '13px'
+                    }}
+                  />
+                  {errors.carModel && <p style={{ color: 'red', fontSize: '10px', marginTop: '2px' }}>{errors.carModel.message}</p>}
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)' }}>
+                    Color
+                  </label>
+                  <input
+                    {...register('carColor')}
+                    placeholder="White, Black"
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid var(--border-color)',
+                      backgroundColor: 'var(--bg-secondary)',
+                      color: 'var(--text-primary)',
+                      fontSize: '13px'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)' }}>
+                    License Plate *
+                  </label>
+                  <input
+                    {...register('licensePlate', { 
+                      required: isDriverValue ? 'License plate is required for drivers' : false 
+                    })}
+                    placeholder="DL01AB1234"
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      border: errors.licensePlate ? '1px solid red' : '1px solid var(--border-color)',
+                      backgroundColor: 'var(--bg-secondary)',
+                      color: 'var(--text-primary)',
+                      fontSize: '13px'
+                    }}
+                  />
+                  {errors.licensePlate && <p style={{ color: 'red', fontSize: '10px', marginTop: '2px' }}>{errors.licensePlate.message}</p>}
+                </div>
+              </div>
+
+              <div style={{ marginTop: '12px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)' }}>
+                    Seats
+                  </label>
+                  <select
+                    {...register('carSeats')}
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid var(--border-color)',
+                      backgroundColor: 'var(--bg-secondary)',
+                      color: 'var(--text-primary)',
+                      fontSize: '13px'
+                    }}
+                  >
+                    <option value="4">4 seats</option>
+                    <option value="2">2 seats</option>
+                    <option value="5">5 seats</option>
+                    <option value="7">7 seats</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)' }}>
+                    Fuel Type
+                  </label>
+                  <select
+                    {...register('fuelType')}
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid var(--border-color)',
+                      backgroundColor: 'var(--bg-secondary)',
+                      color: 'var(--text-primary)',
+                      fontSize: '13px'
+                    }}
+                  >
+                    <option value="petrol">Petrol</option>
+                    <option value="diesel">Diesel</option>
+                    <option value="cng">CNG</option>
+                    <option value="electric">Electric</option>
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'end', gap: '8px' }}>
+                  <input
+                    type="checkbox"
+                    {...register('hasAC')}
+                    id="hasAC"
+                    defaultChecked={true}
+                    style={{ width: '16px', height: '16px', accentColor: 'var(--mahogany)' }}
+                  />
+                  <label htmlFor="hasAC" style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)' }}>
+                    AC Available
+                  </label>
+                </div>
+              </div>
+            </div>
+          )}
 
           <button
             type="submit"

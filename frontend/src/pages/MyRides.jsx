@@ -10,6 +10,7 @@ export default function MyRides() {
   const [rides, setRides] = useState([])
   const [loading, setLoading] = useState(true)
   const [msg, setMsg] = useState('')
+  const [trackingStates, setTrackingStates] = useState({})
   const nav = useNavigate()
   const { showNotification } = useNotification()
   const { showDialog } = useConfirmDialog()
@@ -193,6 +194,100 @@ export default function MyRides() {
       let errorMsg = err.response?.data?.message || 'Failed to mark ride as complete'
       setMsg('❌ ' + errorMsg)
       showNotification(errorMsg, 'error')
+    }
+  }
+
+  const handleStartTracking = async (rideId) => {
+    try {
+      if (!navigator.geolocation) {
+        showNotification('Geolocation is not supported by your browser', 'error')
+        return
+      }
+
+      showNotification('Requesting location permission...', 'info')
+      
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude, accuracy } = position.coords
+          
+          try {
+            const res = await axios.post(
+              `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/rides/${rideId}/update-location`,
+              { latitude, longitude, accuracy },
+              { headers: { Authorization: `Bearer ${token}` } }
+            )
+            
+            setTrackingStates(prev => ({
+              ...prev,
+              [rideId]: true
+            }))
+            
+            showNotification('📍 Location tracking started', 'success')
+            
+            const trackingInterval = setInterval(() => {
+              navigator.geolocation.getCurrentPosition(
+                async (pos) => {
+                  try {
+                    await axios.post(
+                      `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/rides/${rideId}/update-location`,
+                      { 
+                        latitude: pos.coords.latitude, 
+                        longitude: pos.coords.longitude,
+                        accuracy: pos.coords.accuracy
+                      },
+                      { headers: { Authorization: `Bearer ${token}` } }
+                    )
+                  } catch (err) {
+                    console.error('Location update error:', err)
+                  }
+                },
+                (err) => console.error('Geolocation error:', err)
+              )
+            }, 10000)
+            
+            setTrackingStates(prev => ({
+              ...prev,
+              [`${rideId}_interval`]: trackingInterval
+            }))
+          } catch (err) {
+            console.error('Start tracking error:', err)
+            showNotification('Failed to start location tracking', 'error')
+          }
+        },
+        (err) => {
+          console.error('Geolocation error:', err)
+          showNotification('Permission denied or location unavailable', 'error')
+        }
+      )
+    } catch (err) {
+      console.error('Error:', err)
+      showNotification('Failed to start tracking', 'error')
+    }
+  }
+
+  const handleStopTracking = async (rideId) => {
+    try {
+      if (trackingStates[`${rideId}_interval`]) {
+        clearInterval(trackingStates[`${rideId}_interval`])
+      }
+
+      const res = await axios.post(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/rides/${rideId}/stop-tracking`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      
+      setTrackingStates(prev => ({
+        ...prev,
+        [rideId]: false,
+        [`${rideId}_interval`]: null
+      }))
+      
+      showNotification('📍 Location tracking stopped', 'success')
+      fetchMyRides()
+    } catch (err) {
+      console.error('Stop tracking error:', err)
+      showNotification('Failed to stop tracking', 'error')
     }
   }
 

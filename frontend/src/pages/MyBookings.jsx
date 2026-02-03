@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { useNotification } from '../components/NotificationToast'
 import { useConfirmDialog } from '../components/ConfirmDialog'
+import OTPDisplay from '../components/OTPDisplay'
+import LiveTracking from '../components/LiveTracking'
 
 export default function MyBookings() {
   const { token, user } = useAuth() || {}
@@ -14,6 +16,8 @@ export default function MyBookings() {
   const [selectedBooking, setSelectedBooking] = useState(null)
   const [rating, setRating] = useState(0)
   const [ratingComment, setRatingComment] = useState('')
+  const [showLiveTracking, setShowLiveTracking] = useState(false)
+  const [selectedRideForTracking, setSelectedRideForTracking] = useState(null)
   const nav = useNavigate()
   const { showNotification } = useNotification()
   const { showDialog } = useConfirmDialog()
@@ -225,28 +229,69 @@ export default function MyBookings() {
               </div>
 
               {booking.booking?.status === 'confirmed' && (
-                <div 
-                  className="mt-4 p-4 rounded-lg"
-                  style={{
-                    backgroundColor: '#d4edda',
-                    border: '1px solid #c3e6cb'
-                  }}
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-2xl">✅</span>
-                    <span className="font-bold text-lg" style={{ color: '#155724' }}>
-                      Booking Confirmed!
-                    </span>
-                  </div>
-                  <p className="text-sm" style={{ color: '#155724' }}>
-                    Your ride has been confirmed by the provider. Contact them for more details.
-                  </p>
-                  {booking.provider?.email && (
-                    <p className="text-sm mt-2" style={{ color: '#155724' }}>
-                      📧 {booking.provider.email}
+                <>
+                  <div 
+                    className="mt-4 p-4 rounded-lg"
+                    style={{
+                      backgroundColor: '#d4edda',
+                      border: '1px solid #c3e6cb'
+                    }}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-2xl">✅</span>
+                      <span className="font-bold text-lg" style={{ color: '#155724' }}>
+                        Booking Confirmed!
+                      </span>
+                    </div>
+                    <p className="text-sm" style={{ color: '#155724' }}>
+                      Your ride has been confirmed by the provider. Contact them for more details.
                     </p>
+                    {booking.provider?.email && (
+                      <p className="text-sm mt-2" style={{ color: '#155724' }}>
+                        📧 {booking.provider.email}
+                      </p>
+                    )}
+                  </div>
+                  
+                  {booking.booking?.otp && !booking.booking?.otpVerified && (
+                    <>
+                      <div className="mt-3 mb-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                        <span>📬 OTP Delivery: {booking.booking.otpDeliveryMethod === 'email' ? '📧 Email' : booking.booking.otpDeliveryMethod === 'sms' ? '📱 SMS' : '📧 Email & 📱 SMS'}</span>
+                        {booking.booking.smsSent && booking.booking.otpDeliveryMethod !== 'email' && (
+                          <span className="text-green-600 ml-2">✓ SMS sent</span>
+                        )}
+                        {booking.booking.smsError && (
+                          <span className="text-red-600 ml-2">⚠️ SMS failed</span>
+                        )}
+                      </div>
+                      <OTPDisplay 
+                        otp={booking.booking.otp}
+                        expiryTime={booking.booking.otpExpiry}
+                        bookingId={booking.booking._id}
+                      />
+                    </>
                   )}
-                </div>
+
+                  {booking.booking?.otpVerified && (
+                    <div 
+                      className="mt-4 p-4 rounded-lg"
+                      style={{
+                        backgroundColor: '#cfe9ff',
+                        border: '1px solid #0d6efd'
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">🎉</span>
+                        <span className="font-bold" style={{ color: '#0d6efd' }}>
+                          OTP Verified - You're confirmed on the ride!
+                        </span>
+                      </div>
+                      <div className="text-sm mt-2" style={{ color: '#0d6efd' }}>
+                        Delivery method: {booking.booking.otpDeliveryMethod === 'email' ? '📧 Email' : booking.booking.otpDeliveryMethod === 'sms' ? '📱 SMS' : '📧 Email & 📱 SMS'}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
 
               {booking.booking?.status === 'pending' && (
@@ -308,6 +353,24 @@ export default function MyBookings() {
                 </button>
                 {booking.booking?.status === 'confirmed' && (
                   <>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        setSelectedRideForTracking(booking)
+                        setShowLiveTracking(true)
+                      }}
+                      className="px-4 py-2 rounded-lg transition-all hover:opacity-80 flex items-center gap-2"
+                      style={{
+                        backgroundColor: '#007bff',
+                        color: 'white',
+                        fontWeight: '600',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <span>🗺️</span> Live Tracking
+                    </button>
+                    
                     <button
                       onClick={(e) => {
                         e.preventDefault()
@@ -489,6 +552,31 @@ export default function MyBookings() {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Live Tracking Modal */}
+      {showLiveTracking && selectedRideForTracking && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          onClick={() => {
+            setShowLiveTracking(false)
+            setSelectedRideForTracking(null)
+          }}
+        >
+          <div 
+            className="w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <LiveTracking 
+              rideId={selectedRideForTracking._id}
+              ride={selectedRideForTracking}
+              onClose={() => {
+                setShowLiveTracking(false)
+                setSelectedRideForTracking(null)
+              }}
+            />
+          </div>
         </div>
       )}
 
